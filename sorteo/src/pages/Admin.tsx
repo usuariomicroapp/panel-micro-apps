@@ -1,4 +1,7 @@
+import { Link } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
+import { useAuth } from '../lib/auth'
+import { isConfigured } from '../lib/supabase'
 
 const cards = [
   { title: 'Productos', desc: 'Crear, editar, fotos, costo y precio de referencia', stage: 5 },
@@ -19,6 +22,17 @@ const stats = [
 ]
 
 export default function Admin() {
+  const { ready, profile } = useAuth()
+  if (isConfigured && !ready) return <p className="py-20 text-center text-muted">Cargando…</p>
+  if (isConfigured && profile?.role !== 'admin') {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="text-xl font-extrabold">Panel privado</h1>
+        <p className="mt-2 text-muted">Solo el administrador puede entrar acá.</p>
+        <Link to="/perfil" className="mt-6 inline-block rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white">Ingresar</Link>
+      </div>
+    )
+  }
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
