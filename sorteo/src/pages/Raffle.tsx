@@ -1,0 +1,93 @@
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import NumberGrid, { GridLegend } from '../components/NumberGrid'
+import PrizeArt from '../components/PrizeArt'
+import ComingSoon from '../components/ComingSoon'
+import { countStates, findDemoRaffle } from '../lib/demo'
+import { fecha, pad, pesos } from '../lib/format'
+
+export default function Raffle() {
+  const { id } = useParams()
+  const raffle = findDemoRaffle(id)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+
+  if (!raffle) {
+    return <p className="py-20 text-center text-muted">No encontramos ese sorteo. <Link to="/" className="font-semibold text-brand-600">Volver</Link></p>
+  }
+
+  const c = countStates(raffle)
+  const toggle = (n: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(n)) next.delete(n)
+      else next.add(n)
+      return next
+    })
+  const chosen = [...selected].sort((a, b) => a - b)
+  const total = chosen.length * raffle.pricePerNumber
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="space-y-6">
+        <Link to="/" className="text-sm font-medium text-muted">← Sorteos</Link>
+        <div className="overflow-hidden rounded-3xl border border-line bg-surface">
+          <PrizeArt kind={raffle.art} className="aspect-[16/9] w-full" />
+          <div className="p-5 md:p-6">
+            <h1 className="text-2xl font-extrabold md:text-3xl">{raffle.name}</h1>
+            <p className="mt-1 text-muted">{raffle.description}</p>
+            <dl className="mt-5 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+              <div><dt className="text-muted">Premio</dt><dd className="font-semibold">{raffle.prize}</dd></div>
+              <div><dt className="text-muted">Por número</dt><dd className="font-semibold">{pesos(raffle.pricePerNumber)}</dd></div>
+              <div><dt className="text-muted">Sorteo oficial</dt><dd className="font-semibold">{raffle.officialDraw}</dd></div>
+              <div><dt className="text-muted">Cierre</dt><dd className="font-semibold">{fecha(raffle.closesAt)}</dd></div>
+            </dl>
+            <p className="mt-4 rounded-xl bg-canvas p-3 text-sm"><span className="font-semibold">Regla: </span>{raffle.rule}. Ejemplo: si sale 8537, gana el 37.</p>
+          </div>
+        </div>
+
+        <section className="rounded-3xl border border-line bg-surface p-5 md:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-bold">Elegí tus números</h2>
+            <GridLegend />
+          </div>
+          <NumberGrid total={raffle.totalNumbers} digits={raffle.digits} states={raffle.states} selected={selected} onToggle={toggle} />
+          <p className="mt-3 text-xs text-muted">{c.available} disponibles · {c.reserved} reservados · {c.paid} pagados</p>
+        </section>
+      </div>
+
+      <aside className="lg:sticky lg:top-24 lg:self-start">
+        <div className="rounded-3xl border border-line bg-surface p-5 shadow-sm">
+          <h2 className="font-bold">Tu selección</h2>
+          {chosen.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">Tocá uno o más números verdes de la grilla.</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {chosen.map((n) => (
+                <button key={n} onClick={() => toggle(n)} className="rounded-lg bg-brand-600 px-2.5 py-1 text-sm font-bold text-white" aria-label={`Quitar ${pad(n, raffle.digits)}`}>
+                  {pad(n, raffle.digits)} ×
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mt-5 flex items-baseline justify-between border-t border-line pt-4">
+            <span className="text-sm text-muted">{chosen.length} × {pesos(raffle.pricePerNumber)}</span>
+            <span className="text-2xl font-extrabold">{pesos(total)}</span>
+          </div>
+          <button disabled className="mt-4 w-full cursor-not-allowed rounded-2xl bg-brand-600/40 py-3.5 font-bold text-white">Reservar números</button>
+          <div className="mt-3">
+            <ComingSoon stage={6}>Las reservas reales se activan con la base de datos. Hoy solo se calcula el total.</ComingSoon>
+          </div>
+        </div>
+      </aside>
+
+      {chosen.length > 0 && (
+        <div className="fixed inset-x-0 bottom-[68px] z-10 border-t border-line bg-surface px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,.06)] lg:hidden">
+          <div className="mx-auto flex max-w-6xl items-center justify-between">
+            <span className="text-sm"><b>{chosen.length}</b> números · <b>{pesos(total)}</b></span>
+            <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">Reservas en Etapa 6</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
