@@ -2,7 +2,7 @@
 
 Aplicación web instalable (PWA) para sorteos con resultados de la Quiniela de la Ciudad.
 
-**Estado:** Etapa 2 (diseño visual y navegación). Modo demostración: los datos son de ejemplo, no hay base de datos, no se venden números ni se aceptan pagos.
+**Estado:** Etapa 2 (diseño y navegación) terminada; Etapa 3 con la base de datos lista en `supabase/`, falta conectarla a una cuenta de Supabase. Modo demostración: los datos son de ejemplo, no hay base de datos, no se venden números ni se aceptan pagos.
 
 Plan completo (Etapa 1): https://claude.ai/artifact/SMxVzs8ao7PiKCnkVQyDH3
 
