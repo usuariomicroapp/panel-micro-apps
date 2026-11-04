@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useBrand } from '../lib/brand'
 import ComingSoon from '../components/ComingSoon'
 import { InstallCard, PushCard } from '../components/AppSetup'
 import { RECOVERY_KEY, useAuth } from '../lib/auth'
@@ -17,8 +18,11 @@ const translate = (msg: string) => {
   return msg
 }
 
+// A dónde volver después de ingresar (la pantalla que quería ver).
+export const BACK_KEY = 'sorteo-volver'
+
 function AuthForm() {
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [mode, setMode] = useState<'login' | 'signup'>('signup')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
@@ -68,7 +72,7 @@ function AuthForm() {
         {(['login', 'signup'] as const).map((m) => (
           <button key={m} type="button" onClick={() => { setMode(m); setError(''); setInfo('') }}
             className={`rounded-xl py-2 ${mode === m ? 'bg-surface text-brand-700 shadow-sm' : 'text-muted'}`}>
-            {m === 'login' ? 'Ingresar' : 'Crear cuenta'}
+            {m === 'login' ? 'Ya tengo cuenta' : 'Crear cuenta'}
           </button>
         ))}
       </div>
@@ -184,13 +188,27 @@ function ManagerTools() {
 
 export default function Profile() {
   const { ready, session, isAdmin } = useAuth()
+  const { name } = useBrand()
+  const navigate = useNavigate()
+  // Recién ingresó: lo llevamos a donde quería ir (por ejemplo, los sorteos del organizador).
+  useEffect(() => {
+    if (!session) return
+    let back: string | null = null
+    try { back = sessionStorage.getItem(BACK_KEY); sessionStorage.removeItem(BACK_KEY) } catch { /* sin almacenamiento */ }
+    if (back && back !== '/perfil') navigate(back, { replace: true })
+  }, [session, navigate])
   const [recovering, setRecovering] = useState(() => {
     try { return sessionStorage.getItem(RECOVERY_KEY) === '1' } catch { return false }
   })
   const [changed, setChanged] = useState(false)
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-2xl font-extrabold">Mi perfil</h1>
+      {isConfigured && ready && !session ? (
+        <div className="text-center">
+          <h1 className="font-display text-3xl font-bold">Bienvenido a {name}</h1>
+          <p className="mt-2 text-lg">Para elegir tus números, primero creá tu cuenta. Si ya tenés una, tocá <b>Ya tengo cuenta</b>.</p>
+        </div>
+      ) : <h1 className="text-2xl font-extrabold">Mi perfil</h1>}
       {!isConfigured ? (
         <ComingSoon stage={3}>El registro e ingreso se activan cuando se conecte la base de datos.</ComingSoon>
       ) : !ready ? (

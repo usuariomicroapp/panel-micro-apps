@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
-import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, Link, useLocation } from 'react-router-dom'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { useBrand } from '../lib/brand'
+import { isConfigured } from '../lib/supabase'
+import { BACK_KEY } from '../pages/Profile'
 import Notices from './Notices'
 import JoinOrganizer from './JoinOrganizer'
 import Icon, { type IconName } from './Icon'
@@ -21,7 +23,7 @@ const isDark = (path: string) => path.startsWith('/admin') || path.startsWith('/
 
 export default function Layout() {
   const { pathname } = useLocation()
-  const { isAdmin, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
+  const { ready, session, isAdmin, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
   const { paused, pausedMessage } = useBrand()
   // El participante solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
   // El dueño comparte desde su panel. El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
@@ -35,6 +37,13 @@ export default function Layout() {
     document.documentElement.classList.add('app-bg')
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0c1226' : '#f6f4ef')
   }, [dark])
+  // Sin cuenta, lo primero es registrarse o ingresar. Después vuelve a donde quería ir.
+  const mustLogin = isConfigured && ready && !session && pathname !== '/perfil'
+  if (mustLogin) {
+    try { sessionStorage.setItem(BACK_KEY, pathname) } catch { /* sin almacenamiento */ }
+    return <Navigate to="/perfil" replace />
+  }
+  const guest = isConfigured && !session
   return (
     <div className="flex min-h-screen flex-col">
       {paused && <div className="bg-sold px-4 py-2 text-center text-sm font-semibold text-white">{pausedMessage || 'La app está pausada momentáneamente.'}</div>}
@@ -47,7 +56,7 @@ export default function Layout() {
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link to="/" aria-label="Inicio"><Logo /></Link>
-          <nav className="hidden gap-1 md:flex">
+          <nav className={`${guest ? 'hidden' : 'hidden md:flex'} gap-1`}>
             {items.map((n) => (
               <NavLink key={n.to} to={n.to} end className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-bold ${isActive ? 'btn-navy' : 'text-muted hover:text-ink'}`}>
                 {n.label}
@@ -63,7 +72,7 @@ export default function Layout() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 md:pb-12">
         <Outlet />
       </main>
-      <nav className={`fixed inset-x-0 bottom-0 z-20 grid ${items.length === 5 ? 'grid-cols-5' : 'grid-cols-4'} border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_-20px_#0c1226] backdrop-blur-md md:hidden`}>
+      {!guest && <nav className={`fixed inset-x-0 bottom-0 z-20 grid ${items.length === 5 ? 'grid-cols-5' : 'grid-cols-4'} border-t border-line bg-canvas/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_-20px_#0c1226] backdrop-blur-md md:hidden`}>
         {items.map((n) => (
           <NavLink key={n.to} to={n.to} end className={({ isActive }) => `group flex flex-col items-center gap-1 whitespace-nowrap py-2.5 text-[11px] font-bold ${isActive ? 'text-ink' : 'text-muted'}`}>
             {({ isActive }) => (<>
@@ -72,7 +81,7 @@ export default function Layout() {
             </>)}
           </NavLink>
         ))}
-      </nav>
+      </nav>}
     </div>
   )
 }

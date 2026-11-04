@@ -99,7 +99,7 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
         <p className="text-sm font-semibold">1. Foto de lo que se sortea</p>
         <label className="mt-2 block cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-gold/50 bg-surface">
           {preview || current ? (
-            <img src={preview ?? current!} alt="" className="aspect-[16/10] w-full object-cover" />
+            <img src={preview ?? current!} alt="" className="aspect-[16/10] w-full bg-night object-contain" />
           ) : (
             <span className="grid aspect-[16/10] w-full place-items-center text-center text-sm font-semibold text-muted">📷<br />Tocá para subir la foto</span>
           )}
@@ -190,8 +190,12 @@ export default function Raffles() {
             <li key={r.id}><RaffleForm initial={r} products={products} photo={photos[r.product_id] || undefined} onDone={() => { setEditing(null); void load() }} /></li>
           ) : (
             <li key={r.id} className="rounded-2xl border border-line p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="text-sm">
+              <div className="flex items-start gap-3">
+                {photos[r.product_id]
+                  ? <img src={photos[r.product_id]} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-night object-contain" />
+                  : <span className="grid h-20 w-20 shrink-0 place-items-center rounded-xl bg-line text-2xl">🎁</span>}
+              <div className="flex min-w-0 flex-1 flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 text-sm">
                   <p className="font-semibold">
                     {r.raffle_no ? `N° ${r.raffle_no} · ` : ''}{r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
                     {r.is_demo && <span className="ml-1 rounded-full bg-gold/30 px-2 py-0.5 text-xs font-bold text-brand-900">Prueba</span>}
@@ -201,12 +205,13 @@ export default function Raffles() {
                     ? <>Se sortea el {dmy(r.official_draw_date)} a las {slotTimes[r.official_draw_slot]} · {slotLabels[r.official_draw_slot].split(' ·')[0]}</>
                     : 'Día del sorteo: todavía sin cargar'}</p>
                 </div>
-                <div className="flex gap-3 text-sm font-semibold">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 whitespace-nowrap text-sm font-semibold">
                   {r.status !== 'draft' && <Link to={`/sorteo/${r.id}`} className="text-muted">Ver</Link>}
                   <button onClick={() => setEditing(r.id)} className="text-brand-600">Editar</button>
                   {r.status === 'draft' && <button onClick={() => void setStatus(r, 'active')} className="text-free">Publicar</button>}
                   {(r.status === 'active' || r.status === 'closed') && <button onClick={() => void setStatus(r, 'cancelled')} className="text-sold">Cancelar sorteo</button>}
                 </div>
+              </div>
               </div>
               <RaffleStats id={r.id} />
               {['draft', 'active', 'closed'].includes(r.status) && (

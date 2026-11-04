@@ -121,7 +121,7 @@ export default function Raffle() {
       <div className="space-y-6">
         <Link to="/" className="inline-flex items-center gap-1 text-base font-bold text-muted"><span aria-hidden="true">‹</span> Sorteos</Link>
         <div className="overflow-hidden card rounded-3xl">
-          <RaffleImage raffle={raffle} gallery className="aspect-[16/9] w-full" />
+          <RaffleImage raffle={raffle} gallery className="aspect-[4/3] w-full" />
           <div className="p-5 md:p-6">
             <div className="mb-2 flex flex-wrap gap-1.5">
               {raffle.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-night">Prueba</span>}
