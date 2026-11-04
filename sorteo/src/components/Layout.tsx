@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Outlet, Link, useLocation } from 'react-router-dom'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
@@ -63,9 +63,10 @@ export default function Layout() {
                 {n.label}
               </NavLink>
             ))}
-            {isAdmin && <NavLink to="/admin" className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-bold ${isActive ? 'btn-gold' : 'text-muted hover:text-ink'}`}>Panel</NavLink>}
+            {isAdmin && !isOwner && <NavLink to="/admin" className={({ isActive }) => `rounded-full px-4 py-2 text-sm font-bold ${isActive ? 'btn-gold' : 'text-muted hover:text-ink'}`}>Panel</NavLink>}
           </nav>
-          {isAdmin && <Link to="/admin" className="btn-gold rounded-full px-4 py-2 text-sm font-extrabold md:hidden">Panel</Link>}
+          {isAdmin && !isOwner && <Link to="/admin" className="btn-gold rounded-full px-4 py-2 text-sm font-extrabold md:hidden">Panel</Link>}
+          {isAdmin && isOwner && <OwnerPanelMenu />}
         </div>
       </header>
       <JoinOrganizer />
@@ -83,6 +84,28 @@ export default function Layout() {
           </NavLink>
         ))}
       </nav>}
+    </div>
+  )
+}
+
+// El dueño elige entre su panel de administrador y su panel de usuario (sus propios sorteos).
+function OwnerPanelMenu() {
+  const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  useEffect(() => { setOpen(false) }, [pathname])
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(!open)} aria-expanded={open} className="btn-gold rounded-full px-4 py-2 text-sm font-extrabold">Panel ▾</button>
+      {open && (
+        <div className="absolute right-0 top-12 z-30 w-60 overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+          <Link to="/admin?modo=admin" onClick={() => setOpen(false)} className="block border-b border-line px-4 py-3.5">
+            <span className="block font-extrabold text-ink">Panel administrador</span><span className="block text-xs text-muted">Clientes y ventas</span>
+          </Link>
+          <Link to="/admin?modo=usuario&tab=sorteos" onClick={() => setOpen(false)} className="block px-4 py-3.5">
+            <span className="block font-extrabold text-ink">Panel usuario</span><span className="block text-xs text-muted">Mis sorteos y productos</span>
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

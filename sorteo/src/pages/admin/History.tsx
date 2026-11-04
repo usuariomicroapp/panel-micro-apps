@@ -1,3 +1,4 @@
+import { myId } from '../../lib/mine'
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card } from '../../components/ui'
@@ -18,8 +19,8 @@ export default function History() {
   const size = 30
 
   useEffect(() => {
-    supabase!.from('audit_logs').select('id, actor, action, table_name, record_id, at').order('at', { ascending: false })
-      .range(page * size, page * size + size - 1).then(async ({ data }) => {
+    void myId().then((me) => supabase!.from('audit_logs').select('id, actor, action, table_name, record_id, at').eq('actor', me).order('at', { ascending: false })
+      .range(page * size, page * size + size - 1)).then(async ({ data }) => {
         const rows = (data ?? []) as Log[]
         const ids = [...new Set(rows.map((r) => r.actor).filter(Boolean))] as string[]
         if (ids.length) {

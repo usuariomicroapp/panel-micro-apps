@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
 import { useAuth, daysLeft } from '../lib/auth'
@@ -37,6 +38,8 @@ export default function Admin() {
   const left = daysLeft(profile?.organizer_until)
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'sorteos'
+  // El dueño tiene dos paneles: el de administrador (clientes y ventas) y el de usuario (sus propios sorteos).
+  const mode = usePanelMode(params.get('modo'))
   const inProfile = tab === 'perfil' || profileTabs.some((t) => t.id === tab)
   const section = profileTabs.find((t) => t.id === tab)
 
@@ -70,13 +73,13 @@ export default function Admin() {
     )
   }
 
-  // El dueño ve solo su panel. Para ver los otros paneles usa cuentas aparte.
-  if (isOwner) {
+  if (isOwner && mode !== 'usuario') {
     return (
       <div className="space-y-5">
+        <PanelSwitch mode="admin" />
         <div>
-          <p className="label text-gold-dark">Panel del dueño</p>
-          <h1 className="font-display text-3xl font-bold">Mi panel</h1>
+          <p className="label text-gold-dark">Panel administrador</p>
+          <h1 className="font-display text-3xl font-bold">Mi negocio</h1>
         </div>
         <Owner />
       </div>
@@ -85,8 +88,9 @@ export default function Admin() {
 
   return (
     <div className="space-y-6">
+      {isOwner && <PanelSwitch mode="usuario" />}
       <div>
-        <p className="label text-gold-dark">Panel del organizador</p>
+        <p className="label text-gold-dark">{isOwner ? 'Panel usuario' : 'Panel del organizador'}</p>
         <h1 className="font-display text-3xl font-bold">Administración</h1>
         {left !== null && <p className="mt-2 rounded-xl bg-gold/15 px-3 py-2 text-sm font-semibold text-gold-dark">Período de prueba: {left === 0 ? 'hoy es el último día' : left === 1 ? 'te queda 1 día' : `te quedan ${left} días`}.</p>}
       </div>
@@ -149,4 +153,39 @@ export default function Admin() {
 function InviteParticipants() {
   const { link, message } = useInviteMessage()
   return <ShareBox title="Invitar participantes" text="Mandá este link para que instalen la app y elijan su número." message={message} link={link} />
+}
+
+const MODE_KEY = 'sorteo-panel-modo'
+type Mode = 'admin' | 'usuario'
+// Recuerda qué panel eligió el dueño, así los botones internos (?tab=...) no lo sacan de ahí.
+function usePanelMode(fromUrl: string | null): Mode {
+  const [mode, setMode] = useState<Mode>(() => {
+    if (fromUrl === 'admin' || fromUrl === 'usuario') return fromUrl
+    try { return localStorage.getItem(MODE_KEY) === 'usuario' ? 'usuario' : 'admin' } catch { return 'admin' }
+  })
+  useEffect(() => {
+    if (fromUrl !== 'admin' && fromUrl !== 'usuario') return
+    setMode(fromUrl)
+    try { localStorage.setItem(MODE_KEY, fromUrl) } catch { /* sin almacenamiento */ }
+  }, [fromUrl])
+  return mode
+}
+
+// Selector de panel, solo para el dueño.
+function PanelSwitch({ mode }: { mode: Mode }) {
+  const opts: { id: Mode; label: string; hint: string }[] = [
+    { id: 'admin', label: 'Panel administrador', hint: 'Clientes y ventas' },
+    { id: 'usuario', label: 'Panel usuario', hint: 'Mis sorteos y productos' },
+  ]
+  return (
+    <div className="grid grid-cols-2 gap-2 rounded-2xl bg-night/40 p-1.5">
+      {opts.map((o) => (
+        <Link key={o.id} to={o.id === 'usuario' ? '/admin?modo=usuario&tab=sorteos' : '/admin?modo=admin'}
+          className={`rounded-xl px-2 py-3 text-center ${mode === o.id ? 'btn-gold' : 'text-ink'}`}>
+          <span className="block text-base font-extrabold leading-tight">{o.label}</span>
+          <span className="block text-xs font-semibold opacity-75">{o.hint}</span>
+        </Link>
+      ))}
+    </div>
+  )
 }
