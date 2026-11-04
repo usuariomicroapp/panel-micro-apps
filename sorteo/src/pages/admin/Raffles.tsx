@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import {
-  digitsFor, fromInputDateTime, slotLabels, statusLabels, toInputDateTime, unsoldLabels,
+  compressImage, digitsFor, loadPhotos, drawMoment, slotLabels, statusLabels, unsoldLabels,
   type DrawSlot, type Product, type Raffle, type RaffleStatus, type UnsoldPolicy,
 } from '../../lib/data'
 import { fecha } from '../../lib/format'
@@ -20,111 +20,167 @@ const explain = (msg: string) => {
   return msg
 }
 
-function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products: Product[]; onDone: () => void }) {
+const SIZES = [100, 500, 1000]
+// Próximo día con Quiniela (lunes a sábado), a partir de mañana.
+const nextDrawDay = () => {
+  const d = new Date(Date.now() - 3 * 3600_000 + 864e5)
+  if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+// Cargar sorteo: foto, qué se sortea, descripción, cantidad de números y día de la Quiniela.
+// La foto y la descripción se guardan en un premio propio del sorteo (no aparece en la tienda).
+function RaffleForm({ initial, products, photo: current, onDone }: { initial?: Raffle; products: Product[]; photo?: string; onDone: () => void }) {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [total, setTotal] = useState(initial?.total_numbers ?? 100)
-  const now = new Date()
-  const inWeek = new Date(now.getTime() + 7 * 864e5)
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const prize = products.find((p) => p.id === initial?.product_id)
+  const sizes = SIZES.includes(total) ? SIZES : [...SIZES, total].sort((x, y) => x - y)
+
+  const pick = (f?: File) => {
+    if (!f) return
+    if (!f.type.startsWith('image/')) return setErr('Elegí una foto (imagen).')
+    setErr(''); setPhoto(f); setPreview(URL.createObjectURL(f))
+  }
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const f = new FormData(e.currentTarget)
     const s = (k: string) => String(f.get(k) ?? '').trim()
-    const row = {
-      name: s('name'),
-      product_id: s('product_id'),
-      description: s('description'),
-      total_numbers: total,
-      digits: digitsFor(total),
-      starts_at: fromInputDateTime(s('starts_at')),
-      closes_at: fromInputDateTime(s('closes_at')),
-      official_draw_date: s('official_draw_date') || null,
-      official_draw_slot: (s('official_draw_slot') || null) as DrawSlot | null,
-      unsold_policy: (s('unsold_policy') || null) as UnsoldPolicy | null,
-      no_winner_notes: s('no_winner_notes'),
-      max_numbers_per_reservation: Number(s('max_numbers_per_reservation')),
-      is_demo: f.get('is_demo') === 'on',
-      status: s('status') as RaffleStatus,
-    }
+    const name = s('name')
+    const description = s('description')
+    const date = s('official_draw_date')
+    const slot = (s('official_draw_slot') || 'nocturna') as DrawSlot
+    if (!initial && !photo) return setErr('Subí la foto de lo que se sortea.')
+    if (!date) return setErr('Elegí el día del sorteo.')
+    if (new Date(`${date}T12:00:00Z`).getUTCDay() === 0) return setErr('Los domingos no hay Quiniela: elegí otro día.')
+    const closes = drawMoment(date, slot)
+    if (closes.getTime() <= Date.now()) return setErr('Elegí un día y horario que todavía no hayan pasado.')
     setBusy(true); setErr('')
-    const { error } = initial
-      ? await supabase!.from('raffles').update(row).eq('id', initial.id)
-      : await supabase!.from('raffles').insert(row)
+    try {
+      // 1) El premio del sorteo (foto y descripción). No se muestra en la tienda.
+      let productId = initial?.product_id ?? ''
+      if (!initial) {
+        const ins = await supabase!.from('products').insert({ name, description, show_in_store: false }).select('id').single()
+        if (ins.error) throw new Error(ins.error.message)
+        productId = (ins.data as { id: string }).id
+      } else if (prize && (prize.name !== name || prize.description !== description)) {
+        await supabase!.from('products').update({ name, description }).eq('id', productId)
+      }
+      if (photo) {
+        const blob = await compressImage(photo)
+        const path = `${productId}/${crypto.randomUUID()}.jpg`
+        const up = await supabase!.storage.from('product-photos').upload(path, blob, { contentType: 'image/jpeg' })
+        if (up.error) throw new Error(up.error.message)
+        // La foto nueva queda primera.
+        const { data: old } = await supabase!.from('product_photos').select('id, position').eq('product_id', productId)
+        for (const o of (old ?? []) as { id: string; position: number }[]) await supabase!.from('product_photos').update({ position: o.position + 1 }).eq('id', o.id)
+        const ph = await supabase!.from('product_photos').insert({ product_id: productId, path, position: 0 })
+        if (ph.error) throw new Error(ph.error.message)
+      }
+      // 2) El sorteo.
+      const row = {
+        name,
+        product_id: productId,
+        description,
+        total_numbers: total,
+        digits: digitsFor(total),
+        ...(initial ? {} : { starts_at: new Date().toISOString() }),
+        closes_at: closes.toISOString(),
+        official_draw_date: date,
+        official_draw_slot: slot,
+        unsold_policy: (s('unsold_policy') || 'siguiente_sorteo') as UnsoldPolicy,
+        no_winner_notes: s('no_winner_notes'),
+        max_numbers_per_reservation: Number(s('max_numbers_per_reservation')) || 1,
+        is_demo: f.get('is_demo') === 'on',
+        status: (s('status') || 'active') as RaffleStatus,
+      }
+      const { error } = initial
+        ? await supabase!.from('raffles').update(row).eq('id', initial.id)
+        : await supabase!.from('raffles').insert(row)
+      if (error) throw new Error(explain(error.message))
+      onDone()
+    } catch (e2) {
+      setErr(e2 instanceof Error ? explain(e2.message) : 'No se pudo guardar el sorteo.')
+    }
     setBusy(false)
-    if (error) setErr(explain(error.message))
-    else onDone()
   }
 
+  const digits = digitsFor(total)
   return (
     <form onSubmit={submit} className="space-y-4 rounded-2xl border border-brand-200 bg-brand-50/40 p-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm sm:col-span-2">Nombre del sorteo
-          <input name="name" required maxLength={120} defaultValue={initial?.name} className={inputCls} />
+      <div>
+        <p className="text-sm font-semibold">1. Foto de lo que se sortea</p>
+        <label className="mt-2 block cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-gold/50 bg-surface">
+          {preview || current ? (
+            <img src={preview ?? current!} alt="" className="aspect-[16/10] w-full object-cover" />
+          ) : (
+            <span className="grid aspect-[16/10] w-full place-items-center text-center text-sm font-semibold text-muted">📷<br />Tocá para subir la foto</span>
+          )}
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
         </label>
-        <label className="block text-sm sm:col-span-2">Producto
-          <select name="product_id" required defaultValue={initial?.product_id ?? ''} className={inputCls}>
-            <option value="" disabled>Elegí un producto</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        {(preview || current) && <p className="mt-1 text-xs text-muted">Tocá la foto para cambiarla.</p>}
+      </div>
+      <label className="block text-sm font-semibold">2. Qué se sortea
+        <input name="name" required maxLength={120} defaultValue={initial?.name} placeholder="Ej.: Bicicleta rodado 29" className={inputCls} />
+      </label>
+      <label className="block text-sm font-semibold">3. Descripción (va debajo de la foto)
+        <textarea name="description" rows={3} maxLength={4000} defaultValue={initial?.description} placeholder="Ej.: Nueva, con cambios Shimano. Se entrega en el local." className={inputCls} />
+      </label>
+      <div>
+        <p className="text-sm font-semibold">4. Cantidad de números</p>
+        <div className={`mt-2 grid gap-2 ${sizes.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          {sizes.map((n) => (
+            <button type="button" key={n} onClick={() => setTotal(n)}
+              className={`rounded-2xl py-3 text-center font-extrabold ${total === n ? 'btn-gold' : 'card text-ink'}`}>
+              {n}
+              <span className="block text-[11px] font-semibold opacity-80">{'0'.padStart(digitsFor(n), '0')} al {String(n - 1).padStart(digitsFor(n), '0')}</span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-muted">Gana el número igual a las últimas {digits} cifras del 1.er premio de la Quiniela de la Ciudad.</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block text-sm font-semibold">5. Día del sorteo
+          <input name="official_draw_date" type="date" required defaultValue={initial?.official_draw_date ?? nextDrawDay()} className={inputCls} />
+        </label>
+        <label className="block text-sm font-semibold">Quiniela
+          <select name="official_draw_slot" defaultValue={initial?.official_draw_slot ?? 'nocturna'} className={inputCls}>
+            {Object.entries(slotLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-        </label>
-        <label className="block text-sm sm:col-span-2">Descripción
-          <textarea name="description" rows={2} maxLength={4000} defaultValue={initial?.description} className={inputCls} />
-        </label>
-        <label className="block text-sm">Cantidad de números
-          <input type="number" required min={2} max={10000} value={total} onChange={(e) => setTotal(Number(e.target.value))} className={inputCls} />
-          <span className="mt-1 block text-xs text-muted">Del {'0'.padStart(digitsFor(total), '0')} al {String(total - 1).padStart(digitsFor(total), '0')} · {digitsFor(total)} cifras. Podés cambiarla cuando quieras, siempre que no quites números ya elegidos.</span>
-        </label>
-        <label className="block text-sm">Inicio (hora Argentina)
-          <input name="starts_at" type="datetime-local" required defaultValue={toInputDateTime(initial?.starts_at ?? now.toISOString())} className={inputCls} />
-        </label>
-        <label className="block text-sm">Se puede elegir hasta (hora Argentina)
-          <input name="closes_at" type="datetime-local" required defaultValue={toInputDateTime(initial?.closes_at ?? inWeek.toISOString())} className={inputCls} />
         </label>
       </div>
 
-      <fieldset className="card rounded-2xl p-4">
-        <legend className="px-1 text-sm font-semibold">Sorteo oficial de referencia · Quiniela de la Ciudad</legend>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm">Fecha del sorteo oficial
-            <input name="official_draw_date" type="date" defaultValue={initial?.official_draw_date ?? ''} className={inputCls} />
+      <details className="card rounded-2xl p-4">
+        <summary className="cursor-pointer text-sm font-semibold">Más opciones</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm">Números por persona
+            <input name="max_numbers_per_reservation" type="number" min="1" max="1000" defaultValue={initial?.max_numbers_per_reservation ?? 1} className={inputCls} />
           </label>
-          <label className="block text-sm">Horario
-            <select name="official_draw_slot" defaultValue={initial?.official_draw_slot ?? 'nocturna'} className={inputCls}>
-              {Object.entries(slotLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <label className="block text-sm">Estado
+            <select name="status" defaultValue={initial?.status ?? 'active'} className={inputCls}>
+              {(['draft', 'active', 'closed', 'cancelled'] as RaffleStatus[]).map((k) => <option key={k} value={k}>{statusLabels[k]}</option>)}
             </select>
           </label>
-          <p className="text-sm sm:col-span-2"><b>Regla:</b> gana el número igual a las últimas {digitsFor(total)} cifras del primer premio.</p>
-          <label className="block text-sm sm:col-span-2">Si el número ganador no se vendió
-            <select name="unsold_policy" defaultValue={initial?.unsold_policy ?? ''} className={inputCls}>
-              <option value="">Sin definir (obligatorio para activar)</option>
+          <label className="block text-sm sm:col-span-2">Si el número ganador no lo eligió nadie
+            <select name="unsold_policy" defaultValue={initial?.unsold_policy ?? 'siguiente_sorteo'} className={inputCls}>
               {Object.entries(unsoldLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
           <label className="block text-sm sm:col-span-2">Notas para casos no previstos
             <input name="no_winner_notes" maxLength={1000} defaultValue={initial?.no_winner_notes} className={inputCls} />
           </label>
+          <label className="flex items-start gap-2 text-sm sm:col-span-2">
+            <input type="checkbox" name="is_demo" defaultChecked={initial?.is_demo ?? false} className="mt-1" />
+            <span><b>Sorteo de prueba.</b> Se muestra con la etiqueta "Prueba".</span>
+          </label>
         </div>
-      </fieldset>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block text-sm">Números por persona
-          <input name="max_numbers_per_reservation" type="number" min="1" max="1000" defaultValue={initial?.max_numbers_per_reservation ?? 1} className={inputCls} />
-          <span className="mt-1 block text-xs text-muted">Cuántos números puede elegir cada participante en este sorteo.</span>
-        </label>
-        <label className="block text-sm">Estado
-          <select name="status" defaultValue={initial?.status ?? 'draft'} className={inputCls}>
-            {(['draft', 'active', 'closed', 'cancelled'] as RaffleStatus[]).map((k) => <option key={k} value={k}>{statusLabels[k]}</option>)}
-          </select>
-        </label>
-      </div>
-      <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" name="is_demo" defaultChecked={initial?.is_demo ?? false} className="mt-1" />
-        <span><b>Sorteo de prueba.</b> Se muestra con la etiqueta "Prueba" para que nadie lo confunda con un sorteo real.</span>
-      </label>
+      </details>
       {err && <Notice kind="error">{err}</Notice>}
       <div className="flex gap-2">
-        <button disabled={busy} className={primaryCls}>{initial ? 'Guardar' : 'Crear sorteo'}</button>
+        <button disabled={busy} className={`${primaryCls} flex-1`}>{busy ? 'Guardando…' : initial ? 'Guardar' : 'Publicar sorteo'}</button>
         <button type="button" onClick={onDone} className={ghostCls}>Cancelar</button>
       </div>
     </form>
@@ -146,14 +202,18 @@ export default function Raffles() {
   const [items, setItems] = useState<Raffle[] | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [editing, setEditing] = useState<string | 'new' | null>(null)
+  const [photos, setPhotos] = useState<Record<string, string>>({})
 
   const load = async () => {
     const [{ data: r }, { data: p }] = await Promise.all([
       supabase!.from('raffles').select('*').eq('organizer_id', await myId()).order('created_at', { ascending: false }),
       supabase!.rpc('admin_products'),
     ])
-    setItems((r ?? []) as Raffle[])
+    const list = (r ?? []) as Raffle[]
+    setItems(list)
     setProducts((p ?? []) as Product[])
+    const ph = await loadPhotos([...new Set(list.map((x) => x.product_id))])
+    setPhotos(Object.fromEntries(Object.entries(ph).map(([k, v]) => [k, v[0]?.url ?? ''])))
   }
   useEffect(() => { void load() }, [])
 
@@ -162,21 +222,15 @@ export default function Raffles() {
   }
 
   return (
-    <Card title="Sorteos" action={editing === null && <button onClick={() => setEditing('new')} disabled={!products.length} className="text-sm font-semibold text-brand-600 disabled:text-muted">+ Nuevo sorteo</button>}>
-      {items && !products.length && (
-        <div className="mb-4 rounded-2xl border border-gold/40 bg-gold/10 p-4">
-          <p className="font-semibold">Paso 1: cargá el premio (producto) con sus fotos.</p>
-          <p className="mt-1 text-sm text-muted">Después volvés acá y creás el sorteo con ese premio.</p>
-          <Link to="/admin?tab=productos" className={`${primaryCls} mt-3 block text-center`}>Cargar mi primer producto</Link>
-        </div>
-      )}
+    <Card title="Sorteos">
+      {editing === null && <button onClick={() => setEditing('new')} className={`${primaryCls} mb-4 w-full py-4 text-lg`}>+ Cargar sorteo</button>}
       {editing === 'new' && <div className="mb-4"><RaffleForm products={products} onDone={() => { setEditing(null); void load() }} /></div>}
       {!items ? <p className="text-muted">Cargando…</p> : items.length === 0 && editing !== 'new' ? (
-        <p className="text-sm text-muted">Todavía no hay sorteos.</p>
+        <p className="text-sm text-muted">Todavía no cargaste sorteos.</p>
       ) : (
         <ul className="space-y-3">
           {items.map((r) => editing === r.id ? (
-            <li key={r.id}><RaffleForm initial={r} products={products} onDone={() => { setEditing(null); void load() }} /></li>
+            <li key={r.id}><RaffleForm initial={r} products={products} photo={photos[r.product_id] || undefined} onDone={() => { setEditing(null); void load() }} /></li>
           ) : (
             <li key={r.id} className="rounded-2xl border border-line p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

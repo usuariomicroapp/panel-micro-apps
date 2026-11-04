@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import { compressImage, photoUrl, type Product, type ProductPhoto } from '../../lib/data'
 import { pesos } from '../../lib/format'
@@ -144,7 +145,12 @@ export default function Products() {
   const [editing, setEditing] = useState<string | 'new' | null>(null)
   const [err, setErr] = useState('')
 
-  const load = () => supabase!.rpc('admin_products').then(({ data }) => setItems((data ?? []) as Product[]))
+  // Los premios de los sorteos se cargan desde Sorteos: acá van solo los productos de la tienda.
+  const load = async () => {
+    const [{ data }, { data: rs }] = await Promise.all([supabase!.rpc('admin_products'), supabase!.from('raffles').select('product_id').eq('organizer_id', await myId())])
+    const used = new Set(((rs ?? []) as { product_id: string }[]).map((r) => r.product_id))
+    setItems(((data ?? []) as Product[]).filter((p) => !used.has(p.id)))
+  }
   useEffect(() => { void load() }, [])
 
   const remove = async (p: Product) => {
@@ -158,7 +164,7 @@ export default function Products() {
   }
 
   return (
-    <Card title="Productos" action={editing === null && <button onClick={() => setEditing('new')} className="text-sm font-semibold text-brand-600">+ Nuevo producto</button>}>
+    <Card title="Productos de tienda" action={editing === null && <button onClick={() => setEditing('new')} className="text-sm font-semibold text-brand-600">+ Nuevo producto</button>}>
       {err && <div className="mb-3"><Notice kind="error">{err}</Notice></div>}
       {editing === 'new' && <div className="mb-4"><ProductForm onDone={() => { setEditing(null); void load() }} /></div>}
       {!items ? <p className="text-muted">Cargando…</p> : items.length === 0 && editing !== 'new' ? (
