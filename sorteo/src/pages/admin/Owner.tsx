@@ -79,10 +79,10 @@ function Accounts() {
                 <p className="text-xs text-muted">Desde {fecha(p.created_at)}</p>
               </div>
               {p.is_owner ? (
-                <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Dueño{p.id === me?.id && ' (vos)'}</span>
+                <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-night">Dueño{p.id === me?.id && ' (vos)'}</span>
               ) : p.role === 'admin' ? (
                 <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">Organizador</span>
+                  <span className="rounded-full bg-night px-2.5 py-0.5 text-xs font-bold text-white">Organizador</span>
                   <button onClick={() => setRole(p, 'participant')} className="font-semibold text-sold">Quitar</button>
                 </div>
               ) : (

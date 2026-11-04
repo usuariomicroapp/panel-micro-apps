@@ -1,68 +1,125 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import RaffleImage from '../components/RaffleImage'
 import { InstallCard } from '../components/AppSetup'
 import { useAuth } from '../lib/auth'
 import { fecha } from '../lib/format'
-import { countView, usePublicRaffles } from '../lib/publicRaffles'
+import { drawMoment, slotLabels, slotTimes, dmy } from '../lib/data'
+import { countView, usePublicRaffles, type RaffleView } from '../lib/publicRaffles'
+
+const two = (n: number) => String(Math.max(0, n)).padStart(2, '0')
+
+// Cuenta regresiva hasta el cierre del sorteo.
+function useCountdown(iso: string) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const ms = Math.max(0, new Date(iso).getTime() - now)
+  const s = Math.floor(ms / 1000)
+  return { days: Math.floor(s / 86400), hours: Math.floor((s % 86400) / 3600), minutes: Math.floor((s % 3600) / 60), seconds: s % 60, done: ms === 0 }
+}
+
+const drawText = (r: RaffleView) => {
+  if (!r.drawDate || !r.drawSlot) return 'Quiniela de la Ciudad · día a definir'
+  return `Quiniela de la Ciudad · ${slotLabels[r.drawSlot].split(' ·')[0]} · ${dmy(r.drawDate)} ${slotTimes[r.drawSlot]}`
+}
+
+function Featured({ r }: { r: RaffleView }) {
+  const c = countView(r)
+  const taken = c.paid + c.reserved
+  const pct = Math.round((taken / r.totalNumbers) * 100)
+  const target = r.drawDate && r.drawSlot ? drawMoment(r.drawDate, r.drawSlot).toISOString() : r.closesAt
+  const t = useCountdown(target)
+  const cells: [number, string][] = t.days > 0 ? [[t.days, t.days === 1 ? 'Día' : 'Días'], [t.hours, 'Horas'], [t.minutes, 'Minutos']] : [[t.hours, 'Horas'], [t.minutes, 'Minutos'], [t.seconds, 'Segundos']]
+  return (
+    <Link to={`/sorteo/${r.id}`} className="navycard block overflow-hidden rounded-[28px] p-5 md:p-7">
+      <div className="flex items-center justify-between gap-3">
+        <span className="label inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/10 px-3 py-1.5 text-[#f6e0a4]">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#f6e0a4]" />{r.raffleNo ? `Sorteo N° ${r.raffleNo}` : 'Sorteo destacado'}
+        </span>
+        {r.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-night">Prueba</span>}
+      </div>
+      <div className="mt-4 grid gap-5 md:grid-cols-2 md:items-center">
+        <div className="overflow-hidden rounded-2xl shadow-[0_20px_30px_-20px_#000]">
+          <RaffleImage raffle={r} className="aspect-[16/10] w-full" />
+        </div>
+        <div>
+          <h1 className="font-display text-3xl font-bold leading-tight md:text-4xl">{r.prize || r.name}</h1>
+          <p className="mt-1.5 text-sm text-[#aab3d6]">{drawText(r)}</p>
+          {!t.done && (
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {cells.map(([v, l]) => (
+                <div key={l} className="rounded-2xl border border-white/10 bg-white/5 py-2.5 text-center">
+                  <div className="gold-text font-display text-3xl font-bold tabular-nums">{two(v)}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-[#8f98bf]">{l}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-4 flex justify-between text-sm font-bold">
+            <span className="text-[#c9d0ee]">{taken} de {r.totalNumbers} números elegidos</span>
+            <span className="text-[#5fe0ad]">{c.available} libres</span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full rounded-full bg-gradient-to-r from-[#9c7529] to-[#f6e0a4] shadow-[0_0_10px_#d4ac5688]" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="btn-gold mt-5 block rounded-2xl py-4 text-center text-lg font-extrabold">{r.status === 'active' ? 'Elegir mi número' : 'Ver sorteo'}</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function RaffleRow({ r }: { r: RaffleView }) {
+  const c = countView(r)
+  return (
+    <Link to={`/sorteo/${r.id}`} className="card flex items-center gap-4 rounded-2xl p-3 transition hover:-translate-y-0.5">
+      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl">
+        <RaffleImage raffle={r} className="h-full w-full" />
+      </div>
+      <div className="min-w-0 flex-1">
+        {r.raffleNo && <p className="label text-gold-dark">Sorteo N° {r.raffleNo}</p>}
+        <h2 className="truncate text-lg font-extrabold">{r.prize || r.name}</h2>
+        <p className="text-sm text-muted">{r.status === 'active' ? `Hasta ${fecha(r.closesAt)}` : r.statusLabel}</p>
+      </div>
+      <div className="pr-2 text-right">
+        <p className="font-display text-2xl font-bold text-free">{c.available}</p>
+        <p className="text-xs font-semibold text-muted">libres</p>
+      </div>
+    </Link>
+  )
+}
 
 export default function Home() {
   const { loading, error, data } = usePublicRaffles()
   const { isAdmin } = useAuth()
+  const [first, ...rest] = data
   return (
-    <div>
-      <section className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 to-brand-600 p-6 text-white md:p-10">
-        <p className="text-sm font-semibold text-gold">Sorteos activos</p>
-        <h1 className="mt-1 text-3xl font-extrabold md:text-4xl">Elegí tu número de la suerte</h1>
-        <p className="mt-2 max-w-lg text-brand-100">Cada sorteo usa las dos últimas cifras del primer premio de la Quiniela de la Ciudad.</p>
-      </section>
-
-      <div className="mb-6"><InstallCard compact /></div>
+    <div className="space-y-6">
       {loading && <p className="py-16 text-center text-muted">Cargando sorteos…</p>}
-      {error && <p className="rounded-2xl bg-red-50 p-4 text-center text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-2xl bg-sold/10 p-4 text-center text-sm text-sold">{error}</p>}
       {!loading && !error && data.length === 0 && (
-        <div className="rounded-3xl border border-dashed border-line bg-surface p-10 text-center">
-          <h2 className="text-lg font-bold">Todavía no hay sorteos publicados</h2>
-          <p className="mt-1 text-sm text-muted">Cuando se publique uno, lo vas a ver acá.</p>
-          {isAdmin && (
-            <Link to="/admin?tab=sorteos" className="mt-5 inline-block rounded-2xl bg-brand-600 px-5 py-3 font-bold text-white">Crear un sorteo</Link>
-          )}
+        <div className="navycard rounded-[28px] p-8 text-center">
+          <h1 className="font-display text-3xl font-bold">Elegí tu número de la suerte</h1>
+          <p className="mx-auto mt-2 max-w-md text-[#aab3d6]">Todavía no hay sorteos publicados. Cuando se publique uno, lo vas a ver acá.</p>
+          {isAdmin && <Link to="/admin?tab=sorteos" className="btn-gold mt-6 inline-block rounded-2xl px-6 py-3.5 font-extrabold">Crear un sorteo</Link>}
         </div>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {data.map((r) => {
-          const c = countView(r)
-          const pct = Math.round(((c.paid + c.reserved) / r.totalNumbers) * 100)
-          return (
-            <Link key={r.id} to={`/sorteo/${r.id}`} className="group overflow-hidden rounded-3xl border border-line bg-surface shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <div className="relative">
-                <RaffleImage raffle={r} className="aspect-[16/10] w-full" />
-                <div className="absolute left-3 top-3 flex gap-1.5">
-                  {r.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Prueba</span>}
-                  {r.status !== 'active' && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">{r.statusLabel}</span>}
-                </div>
-              </div>
-              <div className="p-5">
-                {r.raffleNo && <p className="text-sm font-bold text-brand-600">Sorteo N° {r.raffleNo}</p>}
-                <h2 className="text-lg font-bold">{r.name}</h2>
-                <p className="text-sm text-muted">{r.prize}</p>
-                <div className="mt-4 flex items-end justify-between">
-                  <div>
-                    <p className="text-xs text-muted">Números libres</p>
-                    <p className="text-2xl font-extrabold text-free">{c.available}</p>
-                  </div>
-                  <p className="text-right text-xs text-muted">Cierra<br /><span className="font-semibold text-ink">{fecha(r.closesAt)}</span></p>
-                </div>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-line">
-                  <div className="h-full rounded-full bg-sold" style={{ width: `${pct}%` }} />
-                </div>
-                <p className="mt-1.5 text-sm text-muted">{c.paid + c.reserved} elegidos · {c.available} libres</p>
-                <span className="mt-4 block rounded-2xl bg-brand-600 py-3.5 text-center text-lg font-bold text-white group-hover:bg-brand-700">{r.status === 'active' ? 'Elegir mi número' : 'Ver sorteo'}</span>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+      {first && <Featured r={first} />}
+      <InstallCard compact />
+
+      {rest.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-xl font-extrabold">Más sorteos</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {rest.map((r) => <RaffleRow key={r.id} r={r} />)}
+          </div>
+        </section>
+      )}
+      <p className="text-center text-sm text-muted">Cada sorteo usa las últimas cifras del 1.er premio de la Quiniela de la Ciudad.</p>
     </div>
   )
 }

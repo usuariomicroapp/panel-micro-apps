@@ -22,8 +22,8 @@ export async function onRequestGet({ env }) {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#f7f6fb',
-    theme_color: '#4c1d95',
+    background_color: '#f6f4ef',
+    theme_color: '#0c1226',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

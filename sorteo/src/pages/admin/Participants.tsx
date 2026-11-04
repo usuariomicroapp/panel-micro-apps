@@ -136,7 +136,7 @@ export default function Participants() {
               <li key={en.id} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
                 <div>
                   <div className="flex flex-wrap gap-1.5">
-                    {en.numbers.map((n) => <span key={n} className="rounded-lg bg-brand-600 px-2 py-0.5 font-bold tabular-nums text-white">{pad(n, digits)}</span>)}
+                    {en.numbers.map((n) => <span key={n} className="rounded-lg bg-mine px-2 py-0.5 font-bold tabular-nums text-white">{pad(n, digits)}</span>)}
                   </div>
                   <p className="mt-1.5 font-semibold">{en.buyer_name ?? 'Sin nombre'}</p>
                   {en.buyer_phone && (

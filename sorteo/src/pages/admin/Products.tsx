@@ -66,7 +66,7 @@ function Photos({ productId }: { productId: string }) {
           <div key={p.id} className="rounded-2xl border border-line p-2">
             <div className="relative">
               <img src={photoUrl(p.path)} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" />
-              <button type="button" onClick={() => remove(p)} aria-label="Quitar foto" className="absolute right-1.5 top-1.5 h-8 w-8 rounded-full bg-ink text-sm text-white">×</button>
+              <button type="button" onClick={() => remove(p)} aria-label="Quitar foto" className="absolute right-1.5 top-1.5 h-8 w-8 rounded-full bg-night text-sm text-white">×</button>
             </div>
             <Caption photo={p} />
           </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { enablePush, pushState, useInstall, type PushState } from '../lib/pwa'
 import { useAuth } from '../lib/auth'
 
-const btn = 'rounded-2xl bg-brand-600 px-5 py-3 text-lg font-bold text-white active:scale-[.99] disabled:bg-brand-600/40'
+const btn = 'rounded-2xl btn-gold px-5 py-3 text-lg font-bold'
 
 function ShareIcon() {
   return (
@@ -53,7 +53,7 @@ export function PushCard() {
     setBusy(false)
   }
   return (
-    <section className="rounded-3xl border border-line bg-surface p-5">
+    <section className="card rounded-3xl p-5">
       <h2 className="text-lg font-bold">🔔 Avisos en este celular</h2>
       {state === 'on' && <p className="mt-2 text-base text-free">Activados. Te vamos a avisar si ganás o si cambia el día de un sorteo.</p>}
       {state === 'off' && (

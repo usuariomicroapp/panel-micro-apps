@@ -1,8 +1,8 @@
 // Ilustraciones de premios de ejemplo. En la Etapa 5 se reemplazan por las fotos que subas.
 const palettes = {
-  phone: ['#7c3aed', '#c4b5fd'],
-  bike: ['#0f766e', '#99f6e4'],
-  tv: ['#b45309', '#fde68a'],
+  phone: ['#2b3a73', '#0c1226'],
+  bike: ['#2b3a73', '#0c1226'],
+  tv: ['#2b3a73', '#0c1226'],
 } as const
 
 export default function PrizeArt({ kind, className = '' }: { kind: keyof typeof palettes; className?: string }) {
@@ -19,20 +19,20 @@ export default function PrizeArt({ kind, className = '' }: { kind: keyof typeof 
       <circle cx="330" cy="40" r="70" fill="#fff" opacity=".12" />
       <circle cx="60" cy="230" r="90" fill="#fff" opacity=".1" />
       {kind === 'phone' && (
-        <g fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round">
+        <g fill="none" stroke="#e2c27a" strokeWidth="8" strokeLinecap="round">
           <rect x="160" y="50" width="80" height="160" rx="16" />
           <line x1="190" y1="190" x2="210" y2="190" />
         </g>
       )}
       {kind === 'bike' && (
-        <g fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+        <g fill="none" stroke="#e2c27a" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="130" cy="165" r="45" />
           <circle cx="270" cy="165" r="45" />
           <path d="M130 165 L180 95 L250 95 L270 165 M180 95 L215 165 L130 165 M240 75 L260 75" />
         </g>
       )}
       {kind === 'tv' && (
-        <g fill="none" stroke="#fff" strokeWidth="8" strokeLinecap="round">
+        <g fill="none" stroke="#e2c27a" strokeWidth="8" strokeLinecap="round">
           <rect x="105" y="60" width="190" height="120" rx="10" />
           <line x1="170" y1="210" x2="230" y2="210" />
           <line x1="200" y1="180" x2="200" y2="210" />

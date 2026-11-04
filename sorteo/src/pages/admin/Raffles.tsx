@@ -82,7 +82,7 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
         </label>
       </div>
 
-      <fieldset className="rounded-2xl border border-line bg-surface p-4">
+      <fieldset className="card rounded-2xl p-4">
         <legend className="px-1 text-sm font-semibold">Sorteo oficial de referencia · Quiniela de la Ciudad</legend>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-sm">Fecha del sorteo oficial

@@ -6,7 +6,7 @@ import { useAuth } from '../lib/auth'
 import { isConfigured, supabase } from '../lib/supabase'
 
 const input = 'mt-1 w-full rounded-xl border border-line bg-surface px-4 py-3 outline-none focus:border-brand-500 disabled:bg-canvas'
-const primary = 'w-full rounded-2xl bg-brand-600 py-3.5 font-bold text-white active:scale-[.99] disabled:cursor-not-allowed disabled:bg-brand-600/40'
+const primary = 'w-full rounded-2xl btn-gold py-3.5 font-bold disabled:cursor-not-allowed'
 
 const translate = (msg: string) => {
   if (/Invalid login credentials/i.test(msg)) return 'Correo o contraseña incorrectos.'
@@ -54,7 +54,7 @@ function AuthForm() {
   }
 
   return (
-    <form className="space-y-3 rounded-3xl border border-line bg-surface p-6" onSubmit={submit}>
+    <form className="space-y-3 card rounded-3xl p-6" onSubmit={submit}>
       <div className="grid grid-cols-2 rounded-2xl bg-canvas p-1 text-sm font-semibold">
         {(['login', 'signup'] as const).map((m) => (
           <button key={m} type="button" onClick={() => { setMode(m); setError(''); setInfo('') }}
@@ -101,14 +101,14 @@ function ProfileCard() {
   }
 
   return (
-    <form onSubmit={save} className="space-y-3 rounded-3xl border border-line bg-surface p-6">
+    <form onSubmit={save} className="space-y-3 card rounded-3xl p-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-bold">{profile.first_name || 'Tu cuenta'} {profile.last_name}</h2>
           <p className="text-sm text-muted">{profile.email}</p>
         </div>
-        {profile.is_owner ? <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Dueño</span>
-          : profile.role === 'admin' && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">Organizador</span>}
+        {profile.is_owner ? <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-night">Dueño</span>
+          : profile.role === 'admin' && <span className="rounded-full bg-night px-2.5 py-0.5 text-xs font-bold text-white">Organizador</span>}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">Nombre<input name="first_name" defaultValue={profile.first_name} maxLength={80} className={input} /></label>
@@ -132,7 +132,7 @@ function ManagerTools() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <Link to="/admin" className="rounded-2xl bg-ink py-3.5 text-center font-bold text-white">Ir a mi panel</Link>
+        <Link to="/admin" className="rounded-2xl bg-night py-3.5 text-center font-bold text-white">Ir a mi panel</Link>
         <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-2xl border border-line py-3.5 font-semibold text-brand-700">Ver como participante</button>
       </div>
     </div>
@@ -156,8 +156,8 @@ export default function Profile() {
       ) : (
         <AuthForm />
       )}
-      {session && <Link to="/mis-numeros" className="block rounded-2xl bg-brand-600 py-4 text-center text-lg font-bold text-white">Ver mis números</Link>}
-      {session && !isAdmin && <Link to="/resultados" className="block rounded-2xl border border-line bg-surface py-4 text-center text-lg font-bold">Resultados y premios ganados</Link>}
+      {session && <Link to="/mis-numeros" className="block rounded-2xl btn-gold py-4 text-center text-lg font-bold">Ver mis números</Link>}
+      {session && !isAdmin && <Link to="/resultados" className="block card rounded-2xl py-4 text-center text-lg font-bold">Resultados y premios ganados</Link>}
       {session && <><InstallCard /><PushCard /></>}
     </div>
   )
