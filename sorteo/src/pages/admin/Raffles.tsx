@@ -7,6 +7,7 @@ import {
   type Product, type Raffle, type RaffleStatus, type UnsoldPolicy,
 } from '../../lib/data'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
+import Icon from '../../components/Icon'
 
 interface Stats { taken: number; available: number; participants: number }
 
@@ -174,6 +175,20 @@ export default function Raffles() {
     void load()
   }
 
+  // Tachito: borra el sorteo por completo, con su foto y sus números.
+  const remove = async (r: Raffle) => {
+    const { data } = await supabase!.rpc('raffle_stats', { p_raffle: r.id })
+    const taken = ((data ?? []) as Stats[])[0]?.taken ?? 0
+    const warn = taken > 0 ? `\n\nATENCIÓN: ya hay ${taken} ${taken === 1 ? 'número elegido' : 'números elegidos'}. Se borran también.` : ''
+    if (!window.confirm(`¿Borrar "${r.name}" por completo?${warn}\n\nEsto no se puede deshacer.`)) return
+    const { data: ph } = await supabase!.from('product_photos').select('path').eq('product_id', r.product_id)
+    const { error } = await supabase!.rpc('admin_delete_raffle', { p_raffle: r.id })
+    if (error) return window.alert(/admin_delete_raffle|schema cache|function/i.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message)
+    const paths = ((ph ?? []) as { path: string }[]).map((x) => x.path)
+    if (paths.length) await supabase!.storage.from('product-photos').remove(paths)
+    void load()
+  }
+
   const badge: Record<RaffleStatus, string> = {
     draft: 'bg-line text-muted', active: 'bg-free/15 text-free', closed: 'bg-held/20 text-yellow-800', drawn: 'bg-brand-100 text-brand-700', cancelled: 'bg-sold/10 text-sold',
   }
@@ -189,7 +204,9 @@ export default function Raffles() {
           {items.map((r) => editing === r.id ? (
             <li key={r.id}><RaffleForm initial={r} products={products} photo={photos[r.product_id] || undefined} onDone={() => { setEditing(null); void load() }} /></li>
           ) : (
-            <li key={r.id} className="rounded-2xl border border-line p-4">
+            <li key={r.id} className="relative rounded-2xl border border-line p-4 pr-14">
+              <button onClick={() => void remove(r)} aria-label={`Borrar ${r.name}`} title="Borrar sorteo"
+                className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-sold hover:bg-sold/10"><Icon name="trash" className="h-6 w-6" /></button>
               <div className="flex items-start gap-3">
                 {photos[r.product_id]
                   ? <img src={photos[r.product_id]} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-night object-contain" />
