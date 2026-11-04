@@ -121,6 +121,7 @@ export default function Admin() {
         </div>
       ) : (
         <nav className="space-y-3">
+          <InviteParticipants collapsible />
           <button onClick={() => setParams({ tab: 'perfil' })}
             className="card flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-lg font-extrabold text-ink">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/15 text-gold-dark"><Icon name="user" /></span>
@@ -150,9 +151,9 @@ export default function Admin() {
 }
 
 // Link para que los participantes instalen la app y elijan su número.
-function InviteParticipants() {
+function InviteParticipants({ collapsible = false }: { collapsible?: boolean }) {
   const { link, message } = useInviteMessage()
-  return <ShareBox title="Invitar participantes" text="Mandá este link para que instalen la app y elijan su número." message={message} link={link} />
+  return <ShareBox collapsible={collapsible} title="Compartir la app a tu gente" text="Mandá este link para que instalen la app, vean tus sorteos siempre y elijan su número." message={message} link={link} />
 }
 
 const MODE_KEY = 'sorteo-panel-modo'

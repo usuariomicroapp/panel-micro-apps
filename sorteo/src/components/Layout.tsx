@@ -7,6 +7,7 @@ import { isConfigured } from '../lib/supabase'
 import { BACK_KEY } from '../pages/Profile'
 import Notices from './Notices'
 import JoinOrganizer from './JoinOrganizer'
+import { PushBanner } from './AppSetup'
 import Icon, { type IconName } from './Icon'
 
 const nav: { to: string; label: string; icon: IconName }[] = [
@@ -28,7 +29,7 @@ export default function Layout() {
   // El participante solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
   // El dueño comparte desde su panel. El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
   // El organizador tiene su perfil dentro del panel (botón Perfil), no abajo.
-  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin && !isOwner : n.to === '/mis-numeros' ? !isAdmin : n.to === '/perfil' ? !(isAdmin && !isOwner) : true))
+  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin : n.to === '/mis-numeros' ? !isAdmin : n.to === '/perfil' ? !(isAdmin && !isOwner) : true))
   const dark = isDark(pathname)
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -70,6 +71,7 @@ export default function Layout() {
         </div>
       </header>
       <JoinOrganizer />
+      {!isAdmin && <PushBanner />}
       <Notices />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 md:pb-12">
         <Outlet />
