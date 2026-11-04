@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase, isConfigured } from './supabase'
 import { demoRaffles, type DemoRaffle, type NumberState } from './demo'
-import { loadNumberStates, loadPhotos, type PhotoView, slotLabels, statusLabels, unsoldLabels, type Raffle, type RaffleStatus } from './data'
+import { loadNumberStates, loadPhotos, type PhotoView, slotLabels, statusLabels, unsoldLabels, type Raffle, type RaffleStatus, type DrawSlot } from './data'
 
 // Forma común para mostrar un sorteo, venga de la base o de los ejemplos.
 export interface RaffleView {
@@ -23,6 +23,9 @@ export interface RaffleView {
   status: RaffleStatus
   statusLabel: string
   maxPerPerson: number
+  raffleNo?: number | null
+  drawDate?: string | null
+  drawSlot?: DrawSlot | null
 }
 
 const fromDemo = (r: DemoRaffle): RaffleView => ({
@@ -55,6 +58,9 @@ const toView = (r: Row, photos: PhotoView[], states: Record<number, NumberState>
   status: r.status,
   statusLabel: statusLabels[r.status],
   maxPerPerson: r.max_numbers_per_reservation,
+  raffleNo: r.raffle_no,
+  drawDate: r.official_draw_date,
+  drawSlot: r.official_draw_slot,
 })
 
 const select = '*, products(name, prize_info)'

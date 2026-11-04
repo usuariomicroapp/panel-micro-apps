@@ -41,6 +41,7 @@ export default function Home() {
                 </div>
               </div>
               <div className="p-5">
+                {r.raffleNo && <p className="text-sm font-bold text-brand-600">Sorteo N° {r.raffleNo}</p>}
                 <h2 className="text-lg font-bold">{r.name}</h2>
                 <p className="text-sm text-muted">{r.prize}</p>
                 <div className="mt-4 flex items-end justify-between">

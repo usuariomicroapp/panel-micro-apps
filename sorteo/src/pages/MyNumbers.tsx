@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase, isConfigured } from '../lib/supabase'
 import { fecha, pad } from '../lib/format'
+import { slotTimes, type DrawSlot } from '../lib/data'
 
 interface Row {
   id: string
@@ -11,7 +12,7 @@ interface Row {
   status: string
   created_at: string
   notes: string
-  raffles: { name: string; digits: number; is_demo: boolean; status: string; closes_at: string; official_draw_date: string | null } | null
+  raffles: { name: string; digits: number; is_demo: boolean; status: string; closes_at: string; official_draw_date: string | null; official_draw_slot: DrawSlot | null } | null
 }
 
 // Los números que eligió la persona en cada sorteo.
@@ -25,7 +26,7 @@ export default function MyNumbers() {
   const load = useCallback(async () => {
     if (!supabase || !session) return
     const { data, error } = await supabase.from('reservations')
-      .select('id, raffle_id, numbers, status, created_at, notes, raffles(name, digits, is_demo, status, closes_at, official_draw_date)')
+      .select('id, raffle_id, numbers, status, created_at, notes, raffles(name, digits, is_demo, status, closes_at, official_draw_date, official_draw_slot)')
       .eq('user_id', session.user.id).order('created_at', { ascending: false })
     if (error) setErr('No se pudieron cargar tus números.')
     else setRows((data ?? []) as unknown as Row[])
@@ -78,7 +79,7 @@ export default function MyNumbers() {
               {r.numbers.map((n) => <span key={n} className="rounded-xl bg-brand-600 px-4 py-2 text-2xl font-bold tabular-nums text-white">{pad(n, digits)}</span>)}
             </div>
             <p className="mt-3 text-base">Elegido el {fecha(r.created_at)}.</p>
-            {r.raffles?.official_draw_date && <p className="text-base">Se sortea el {r.raffles.official_draw_date.split('-').reverse().join('/')}. Si ganás, te avisamos por teléfono.</p>}
+            {r.raffles?.official_draw_date && <p className="text-base">Se sortea el {r.raffles.official_draw_date.split('-').reverse().join('/')}{r.raffles.official_draw_slot && ` a las ${slotTimes[r.raffles.official_draw_slot]}`}. Si ganás, te avisamos acá en la app y el organizador se comunica con vos.</p>}
             {canRelease && <button onClick={() => release(r)} className="mt-4 w-full rounded-2xl border border-line py-3 font-semibold text-muted">Soltar mis números</button>}
           </article>
         )

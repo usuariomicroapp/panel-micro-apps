@@ -9,19 +9,18 @@ import Products from './admin/Products'
 import Raffles from './admin/Raffles'
 import Participants from './admin/Participants'
 import Owner from './admin/Owner'
+import DrawDay from './admin/DrawDay'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'sorteos', label: 'Sorteos' },
+  { id: 'dia', label: 'Día del sorteo' },
   { id: 'participantes', label: 'Participantes' },
   { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
   { id: 'historial', label: 'Historial' },
 ] as const
 
-const upcoming = [
-  { title: 'Resultados', desc: 'Confirmar resultado oficial y publicar ganador', stage: 8 },
-]
 
 export default function Admin() {
   const { ready, canManage, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
@@ -71,22 +70,8 @@ export default function Admin() {
           </button>
         ))}
       </nav>
-      {tab === 'resumen' && (
-        <>
-          <Overview />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {upcoming.map((c) => (
-              <div key={c.title} className="flex flex-col justify-between rounded-2xl border border-line bg-surface p-5">
-                <div>
-                  <h2 className="font-bold">{c.title}</h2>
-                  <p className="mt-1 text-sm text-muted">{c.desc}</p>
-                </div>
-                <span className="mt-4 self-start rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">Etapa {c.stage}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      {tab === 'resumen' && <Overview />}
+      {tab === 'dia' && <DrawDay />}
       {tab === 'dueno' && isOwner && <Owner />}
       {tab === 'sorteos' && <Raffles />}
       {tab === 'participantes' && <Participants />}

@@ -118,6 +118,7 @@ export default function Raffle() {
               {raffle.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Prueba</span>}
               {!open && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">{raffle.statusLabel}</span>}
             </div>
+            {raffle.raffleNo && <p className="text-sm font-bold text-brand-600">Sorteo N° {raffle.raffleNo}</p>}
             <h1 className="text-2xl font-extrabold md:text-3xl">{raffle.name}</h1>
             {raffle.description && <p className="mt-1 whitespace-pre-line text-muted">{raffle.description}</p>}
             <dl className="mt-5 grid grid-cols-2 gap-4 text-base md:grid-cols-4">

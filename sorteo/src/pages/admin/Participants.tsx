@@ -2,9 +2,9 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card, Notice, inputCls, primaryCls } from '../../components/ui'
 import NumberGrid, { GridLegend } from '../../components/NumberGrid'
-import { loadNumberStates, type Raffle } from '../../lib/data'
+import { loadNumberStates, raffleLabel, type Raffle } from '../../lib/data'
 import type { NumberState } from '../../lib/demo'
-import { fecha, pad } from '../../lib/format'
+import { fecha, pad, waLink } from '../../lib/format'
 
 interface Entry {
   id: string
@@ -18,10 +18,7 @@ interface Entry {
 }
 
 const phoneHref = (p: string) => `tel:${p.replace(/[^\d+]/g, '')}`
-const waHref = (p: string) => {
-  const d = p.replace(/\D/g, '')
-  return `https://wa.me/${d.startsWith('54') ? d : `54${d}`}`
-}
+const waHref = (p: string) => waLink(p)
 
 // Quién tiene cada número, y anotar a quienes eligen en persona (gente sin celular).
 export default function Participants() {
@@ -115,7 +112,7 @@ export default function Participants() {
     <div className="space-y-6">
       <label className="block text-sm font-medium">Sorteo
         <select value={raffleId} onChange={(e) => setRaffleId(e.target.value)} className={inputCls}>
-          {raffles.map((r) => <option key={r.id} value={r.id}>{r.name}{r.is_demo ? ' (prueba)' : ''}</option>)}
+          {raffles.map((r) => <option key={r.id} value={r.id}>{raffleLabel(r)}{r.is_demo ? ' (prueba)' : ''}</option>)}
         </select>
       </label>
 

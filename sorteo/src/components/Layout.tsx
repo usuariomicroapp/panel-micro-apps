@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { useBrand } from '../lib/brand'
+import Notices from './Notices'
 
 const nav = [
   { to: '/', label: 'Sorteos', icon: 'M4 6h16M4 12h16M4 18h10' },
@@ -54,6 +55,7 @@ export default function Layout() {
           {isAdmin && <Link to="/admin" className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted md:hidden">Panel</Link>}
         </div>
       </header>
+      <Notices />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 md:pb-12">
         <Outlet />
       </main>

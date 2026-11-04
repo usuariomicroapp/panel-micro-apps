@@ -49,7 +49,19 @@ export interface Raffle {
   max_numbers_per_reservation: number
   is_demo: boolean
   status: RaffleStatus
+  raffle_no?: number | null
+  needs_new_draw?: boolean
 }
+
+// "Sorteo N° 3 · Bicicleta" para distinguir sorteos cuando hay varios.
+export const raffleLabel = (r: Pick<Raffle, 'name'> & { raffle_no?: number | null }) =>
+  r.raffle_no ? `Sorteo N° ${r.raffle_no} · ${r.name}` : r.name
+
+export const slotTimes: Record<DrawSlot, string> = { previa: '10:15', primera: '12:00', matutina: '15:00', vespertina: '18:00', nocturna: '21:00' }
+// Momento exacto del turno de la Quiniela (hora de Argentina, UTC−3).
+export const drawMoment = (date: string, slot: DrawSlot) => new Date(`${date}T${slotTimes[slot]}:00-03:00`)
+export const dateAR = (d = new Date()) => new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
+export const dmy = (date: string) => date.split('-').reverse().join('/')
 
 export const photoUrl = (path: string) => supabase!.storage.from('product-photos').getPublicUrl(path).data.publicUrl
 

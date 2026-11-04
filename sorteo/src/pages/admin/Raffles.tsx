@@ -175,7 +175,7 @@ export default function Raffles() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="text-sm">
                   <p className="font-semibold">
-                    {r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
+                    {r.raffle_no ? `N° ${r.raffle_no} · ` : ''}{r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
                     {r.is_demo && <span className="ml-1 rounded-full bg-gold/30 px-2 py-0.5 text-xs font-bold text-brand-900">Prueba</span>}
                   </p>
                   <p className="text-muted">{r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona · cierra {fecha(r.closes_at)}</p>
