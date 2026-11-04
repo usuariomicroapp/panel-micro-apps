@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import RaffleImage from '../components/RaffleImage'
+import { InstallCard } from '../components/AppSetup'
 import { useAuth } from '../lib/auth'
 import { fecha } from '../lib/format'
 import { countView, usePublicRaffles } from '../lib/publicRaffles'
@@ -15,6 +16,7 @@ export default function Home() {
         <p className="mt-2 max-w-lg text-brand-100">Cada sorteo usa las dos últimas cifras del primer premio de la Quiniela de la Ciudad.</p>
       </section>
 
+      <div className="mb-6"><InstallCard compact /></div>
       {loading && <p className="py-16 text-center text-muted">Cargando sorteos…</p>}
       {error && <p className="rounded-2xl bg-red-50 p-4 text-center text-sm text-red-700">{error}</p>}
       {!loading && !error && data.length === 0 && (

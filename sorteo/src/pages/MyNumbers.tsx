@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth'
 import { supabase, isConfigured } from '../lib/supabase'
 import { fecha, pad } from '../lib/format'
 import { slotTimes, type DrawSlot } from '../lib/data'
+import { InstallCard, PushCard } from '../components/AppSetup'
 
 interface Row {
   id: string
@@ -60,6 +61,7 @@ export default function MyNumbers() {
     <div className="mx-auto max-w-xl space-y-5">
       <h1 className="text-2xl font-extrabold">Mis números</h1>
       {err && <p role="alert" className="rounded-xl bg-sold/10 p-3 text-sold">{err}</p>}
+      {fresh && <><InstallCard compact /><PushCard /></>}
       {rows === null ? <p className="text-muted">Cargando…</p> : mine.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-line bg-surface p-8 text-center">
           <p className="text-lg">Todavía no elegiste números.</p>

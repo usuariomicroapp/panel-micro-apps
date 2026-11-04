@@ -5,6 +5,7 @@ import QuinielaBoard from '../../components/QuinielaBoard'
 import { useQuiniela } from '../../lib/quiniela'
 import { dateAR, dmy, drawMoment, raffleLabel, slotLabels, slotTimes, unsoldLabels, type DrawSlot, type Raffle } from '../../lib/data'
 import { pad, waLink } from '../../lib/format'
+import { sendPendingPush } from '../../lib/pwa'
 
 type Row = Raffle & { products: { name: string } | null }
 type Preview = { used_prize: string; winning_number: number; name: string; phone: string; from_app: boolean; outcome: string }
@@ -68,6 +69,7 @@ function SetDrawCard({ raffles, onSaved }: { raffles: Row[]; onSaved: () => void
     const { error } = await supabase!.rpc('admin_set_draw', { p_raffle: raffleId, p_date: date, p_slot: slot })
     setBusy(false)
     if (error) return setMsg({ kind: 'error', text: explain(error.message) })
+    void sendPendingPush()
     setMsg({ kind: 'ok', text: `Listo: ${raffle ? raffleLabel(raffle) : 'el sorteo'} se sortea el ${dmy(date)} a las ${slotTimes[slot]} con la Quiniela de la Ciudad. Se pueden elegir números hasta esa hora.` })
     onSaved()
   }
@@ -198,6 +200,7 @@ function ResultCard({ raffles, onPublished }: { raffles: Row[]; onPublished: () 
     const row = ((data ?? []) as { outcome: string; winning_number: number; name: string; phone: string }[])[0]
     setPreview(null)
     setPublished({ ...row, label })
+    void sendPendingPush()
     onPublished()
   }
 

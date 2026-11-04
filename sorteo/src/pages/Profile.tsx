@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
+import { InstallCard, PushCard } from '../components/AppSetup'
 import { useAuth } from '../lib/auth'
 import { isConfigured, supabase } from '../lib/supabase'
-
-const sections = ['Premios ganados']
 
 const input = 'mt-1 w-full rounded-xl border border-line bg-surface px-4 py-3 outline-none focus:border-brand-500 disabled:bg-canvas'
 const primary = 'w-full rounded-2xl bg-brand-600 py-3.5 font-bold text-white active:scale-[.99] disabled:cursor-not-allowed disabled:bg-brand-600/40'
@@ -158,11 +157,8 @@ export default function Profile() {
         <AuthForm />
       )}
       {session && <Link to="/mis-numeros" className="block rounded-2xl bg-brand-600 py-4 text-center text-lg font-bold text-white">Ver mis números</Link>}
-      {!isAdmin && <div className="grid grid-cols-2 gap-3">
-        {sections.map((s) => (
-          <div key={s} className="rounded-2xl border border-line bg-surface p-4 text-sm font-semibold text-muted">{s}<span className="mt-1 block text-xs font-normal">Disponible en la Etapa 8</span></div>
-        ))}
-      </div>}
+      {session && !isAdmin && <Link to="/resultados" className="block rounded-2xl border border-line bg-surface py-4 text-center text-lg font-bold">Resultados y premios ganados</Link>}
+      {session && <><InstallCard /><PushCard /></>}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import NumberGrid, { GridLegend } from '../../components/NumberGrid'
 import { loadNumberStates, raffleLabel, type Raffle } from '../../lib/data'
 import type { NumberState } from '../../lib/demo'
 import { fecha, pad, waLink } from '../../lib/format'
+import { sendPendingPush } from '../../lib/pwa'
 
 interface Entry {
   id: string
@@ -97,6 +98,7 @@ export default function Participants() {
     if (!reason?.trim()) return
     const { error } = await supabase!.rpc('admin_release_entry', { p_reservation: en.id, p_reason: reason })
     if (error) setMsg({ kind: 'error', text: explain(error.message) })
+    else void sendPendingPush()
     void reload()
   }
 

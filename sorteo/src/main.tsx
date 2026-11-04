@@ -5,6 +5,9 @@ import App from './App'
 import { AuthProvider } from './lib/auth'
 import { BrandProvider } from './lib/brand'
 import './index.css'
+import { registerServiceWorker } from './lib/pwa'
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

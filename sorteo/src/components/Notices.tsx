@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { resyncPush } from '../lib/pwa'
 
 interface Note { id: string; kind: string; title: string; body: string; link: string }
 
@@ -18,6 +19,7 @@ export default function Notices() {
     setNotes((data ?? []) as Note[])
   }, [uid])
   useEffect(() => { load() }, [load, pathname])
+  useEffect(() => { if (uid) resyncPush().catch(() => {}) }, [uid])
 
   const dismiss = async (id: string) => {
     setNotes((n) => n.filter((x) => x.id !== id))
