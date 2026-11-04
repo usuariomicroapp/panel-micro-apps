@@ -33,6 +33,8 @@ const AuthContext = createContext<AuthState>({
 })
 
 const VIEW_KEY = 'sorteo-ver-como-comprador'
+/** Marca que la persona llegó desde el correo de "Olvidé mi contraseña". */
+export const RECOVERY_KEY = 'sorteo-recuperar-clave'
 const readView = () => {
   try { return localStorage.getItem(VIEW_KEY) === '1' } catch { return false }
 }
@@ -60,7 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await loadProfile(data.session)
       setReady(true)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
+      if (e === 'PASSWORD_RECOVERY') {
+        try { sessionStorage.setItem(RECOVERY_KEY, '1') } catch { /* sin almacenamiento */ }
+      }
       setSession(s)
       void loadProfile(s)
     })
