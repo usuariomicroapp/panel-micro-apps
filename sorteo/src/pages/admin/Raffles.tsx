@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import {
-  compressImage, digitsFor, loadPhotos, NO_DRAW_YET, dmy, slotTimes, slotLabels, statusLabels, unsoldLabels,
+  compressImage, digitsFor, loadPhotos, NO_DRAW_YET, dmy, slotTimes, slotLabels, statusLabels,
   type Product, type Raffle, type RaffleStatus, type UnsoldPolicy,
 } from '../../lib/data'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
@@ -77,11 +77,9 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
         digits: digitsFor(total),
         // Sin día del sorteo todavía: se carga después en "Día del sorteo".
         ...(initial ? {} : { starts_at: new Date().toISOString(), closes_at: NO_DRAW_YET }),
-        unsold_policy: (s('unsold_policy') || 'siguiente_sorteo') as UnsoldPolicy,
-        no_winner_notes: s('no_winner_notes'),
-        max_numbers_per_reservation: Number(s('max_numbers_per_reservation')) || 1,
-        is_demo: f.get('is_demo') === 'on',
-        status: (s('status') || 'active') as RaffleStatus,
+        // Cada persona puede elegir los números que quiera.
+        max_numbers_per_reservation: Math.min(total, 1000),
+        ...(initial ? {} : { status: 'active' as RaffleStatus, unsold_policy: 'siguiente_sorteo' as UnsoldPolicy, is_demo: false, no_winner_notes: '' }),
       }
       const { error } = initial
         ? await supabase!.from('raffles').update(row).eq('id', initial.id)
@@ -130,31 +128,6 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
       </div>
       {!initial && <p className="rounded-2xl bg-gold/10 p-3 text-sm">📅 El día del sorteo y la Quiniela los cargás después, cuando quieras (por ejemplo, cuando se entreguen todos los números), en <b>Día del sorteo</b>.</p>}
 
-      <details className="card rounded-2xl p-4">
-        <summary className="cursor-pointer text-sm font-semibold">Más opciones</summary>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <label className="block text-sm">Números por persona
-            <input name="max_numbers_per_reservation" type="number" min="1" max="1000" defaultValue={initial?.max_numbers_per_reservation ?? 1} className={inputCls} />
-          </label>
-          <label className="block text-sm">Estado
-            <select name="status" defaultValue={initial?.status ?? 'active'} className={inputCls}>
-              {(['draft', 'active', 'closed', 'cancelled'] as RaffleStatus[]).map((k) => <option key={k} value={k}>{statusLabels[k]}</option>)}
-            </select>
-          </label>
-          <label className="block text-sm sm:col-span-2">Si el número ganador no lo eligió nadie
-            <select name="unsold_policy" defaultValue={initial?.unsold_policy ?? 'siguiente_sorteo'} className={inputCls}>
-              {Object.entries(unsoldLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </label>
-          <label className="block text-sm sm:col-span-2">Notas para casos no previstos
-            <input name="no_winner_notes" maxLength={1000} defaultValue={initial?.no_winner_notes} className={inputCls} />
-          </label>
-          <label className="flex items-start gap-2 text-sm sm:col-span-2">
-            <input type="checkbox" name="is_demo" defaultChecked={initial?.is_demo ?? false} className="mt-1" />
-            <span><b>Sorteo de prueba.</b> Se muestra con la etiqueta "Prueba".</span>
-          </label>
-        </div>
-      </details>
       {err && <Notice kind="error">{err}</Notice>}
       <div className="flex gap-2">
         <button disabled={busy} className={`${primaryCls} flex-1`}>{busy ? 'Guardando…' : initial ? 'Guardar' : 'Publicar sorteo'}</button>
@@ -194,6 +167,13 @@ export default function Raffles() {
   }
   useEffect(() => { void load() }, [])
 
+  const setStatus = async (r: Raffle, status: RaffleStatus) => {
+    if (status === 'cancelled' && !window.confirm(`¿Cancelar "${r.name}"? Deja de verse en la tienda.`)) return
+    const { error } = await supabase!.from('raffles').update({ status }).eq('id', r.id)
+    if (error) window.alert(explain(error.message))
+    void load()
+  }
+
   const badge: Record<RaffleStatus, string> = {
     draft: 'bg-line text-muted', active: 'bg-free/15 text-free', closed: 'bg-held/20 text-yellow-800', drawn: 'bg-brand-100 text-brand-700', cancelled: 'bg-sold/10 text-sold',
   }
@@ -216,7 +196,7 @@ export default function Raffles() {
                     {r.raffle_no ? `N° ${r.raffle_no} · ` : ''}{r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
                     {r.is_demo && <span className="ml-1 rounded-full bg-gold/30 px-2 py-0.5 text-xs font-bold text-brand-900">Prueba</span>}
                   </p>
-                  <p className="text-muted">{r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona</p>
+                  <p className="text-muted">{r.total_numbers} números</p>
                   <p className="text-muted">{r.official_draw_date && r.official_draw_slot
                     ? <>Se sortea el {dmy(r.official_draw_date)} a las {slotTimes[r.official_draw_slot]} · {slotLabels[r.official_draw_slot].split(' ·')[0]}</>
                     : 'Día del sorteo: todavía sin cargar'}</p>
@@ -224,6 +204,8 @@ export default function Raffles() {
                 <div className="flex gap-3 text-sm font-semibold">
                   {r.status !== 'draft' && <Link to={`/sorteo/${r.id}`} className="text-muted">Ver</Link>}
                   <button onClick={() => setEditing(r.id)} className="text-brand-600">Editar</button>
+                  {r.status === 'draft' && <button onClick={() => void setStatus(r, 'active')} className="text-free">Publicar</button>}
+                  {(r.status === 'active' || r.status === 'closed') && <button onClick={() => void setStatus(r, 'cancelled')} className="text-sold">Cancelar sorteo</button>}
                 </div>
               </div>
               <RaffleStats id={r.id} />

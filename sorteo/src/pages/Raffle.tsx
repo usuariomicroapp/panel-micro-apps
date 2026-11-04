@@ -132,7 +132,7 @@ export default function Raffle() {
             {raffle.description && <p className="mt-1 whitespace-pre-line text-muted">{raffle.description}</p>}
             <dl className="mt-5 grid grid-cols-2 gap-4 text-base md:grid-cols-4">
               <div><dt className="text-sm text-muted">Premio</dt><dd className="font-semibold">{raffle.prize}</dd></div>
-              <div><dt className="text-sm text-muted">Por persona</dt><dd className="font-semibold">Hasta {max} {max === 1 ? 'número' : 'números'}</dd></div>
+              <div><dt className="text-sm text-muted">Por persona</dt><dd className="font-semibold">{max >= raffle.totalNumbers ? 'Los que quieras' : `Hasta ${max} ${max === 1 ? 'número' : 'números'}`}</dd></div>
               <div><dt className="text-sm text-muted">Sorteo oficial</dt><dd className="font-semibold">{raffle.officialDraw}</dd></div>
               <div><dt className="text-sm text-muted">Se puede elegir hasta</dt><dd className="font-semibold">{hasDeadline(raffle.closesAt) ? fecha(raffle.closesAt) : 'Hasta que se cargue el día del sorteo'}</dd></div>
             </dl>
