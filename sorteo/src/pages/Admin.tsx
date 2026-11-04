@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
-import { useAuth } from '../lib/auth'
+import { useAuth, daysLeft } from '../lib/auth'
 import { isConfigured } from '../lib/supabase'
 import Overview from './admin/Overview'
 import Settings from './admin/Settings'
@@ -25,7 +25,8 @@ const baseTabs = [
 
 
 export default function Admin() {
-  const { ready, canManage, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
+  const { ready, canManage, isOwner, viewAsBuyer, setViewAsBuyer, profile } = useAuth()
+  const left = daysLeft(profile?.organizer_until)
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'resumen'
 
@@ -38,6 +39,14 @@ export default function Admin() {
       <div className="mx-auto max-w-md py-16 text-center">
         <p className="text-muted">Estás viendo la app como participante.</p>
         <button onClick={() => setViewAsBuyer(false)} className="mt-6 rounded-2xl btn-gold px-6 py-3 font-bold">Volver a mi panel</button>
+      </div>
+    )
+  }
+  if (!canManage && profile?.role === 'admin') {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="font-display text-2xl font-bold">Tu período de prueba terminó</h1>
+        <p className="mt-2 text-muted">Tus sorteos y productos siguen guardados. Escribile al dueño de la app para seguir usando tu panel.</p>
       </div>
     )
   }
@@ -69,6 +78,7 @@ export default function Admin() {
       <div>
         <p className="label text-gold-dark">Panel del organizador</p>
         <h1 className="font-display text-3xl font-bold">Administración</h1>
+        {left !== null && <p className="mt-2 rounded-xl bg-gold/15 px-3 py-2 text-sm font-semibold text-gold-dark">Período de prueba: {left === 0 ? 'hoy es el último día' : left === 1 ? 'te queda 1 día' : `te quedan ${left} días`}.</p>}
       </div>
       <nav className="flex flex-wrap gap-2">
         {baseTabs.map((t) => (

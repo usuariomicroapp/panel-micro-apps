@@ -142,11 +142,11 @@ function InviteOrganizers() {
   if (code === null) return null
   if (!code) return <Notice kind="error">{err || 'No se pudo cargar el link para organizadores.'}</Notice>
   const link = `${window.location.origin}/?unirme=${code}#/perfil`
-  const message = `¡Hola! Te invito a usar ${name} para organizar tus sorteos.\n\nEntrá a este link y creá tu cuenta. Vas a tener tu propio panel para cargar tus productos y sorteos:\n${link}`
+  const message = `¡Hola! Te invito a usar ${name} para organizar tus sorteos.\n\nEntrá a este link y creá tu cuenta. Vas a tener tu propio panel para cargar tus productos y sorteos, con 20 días de prueba:\n${link}`
   return (
     <div className="space-y-2">
-      <ShareBox title="Sumar organizadores" text="Quien se registre con este link queda como organizador al instante. Si lo querés quitar, lo hacés en Cuentas." message={message} link={link} />
-      <button onClick={reset} className="w-full text-center text-sm font-semibold text-muted underline">¿Se filtró el link? Cambiarlo por uno nuevo</button>
+      <ShareBox title="Sumar organizadores" text="Quien se registre con este link queda como organizador con 20 días de prueba. Después lo habilitás desde Mis clientes." message={message} link={link} />
+      <button onClick={reset} className="w-full text-center text-xs text-muted underline">Cambiar el link por uno nuevo</button>
       {err && <Notice kind="error">{err}</Notice>}
     </div>
   )

@@ -33,6 +33,25 @@ select pg_temp.check(join_as_organizer(upper((select code from k))) = 'ok', 'con
 select pg_temp.as_postgres();
 select pg_temp.check((select role from profiles where id = :'NUEVO') = 'admin', 'tiene rol de organizador');
 select pg_temp.check(exists (select 1 from organizer_settings where organizer_id = :'NUEVO'), 'ya tiene su marca y su link');
+select pg_temp.check((select organizer_until from profiles where id = :'NUEVO') = (now() at time zone 'America/Argentina/Buenos_Aires')::date + 20, 'tiene 20 días de prueba');
+select pg_temp.check((select organizer_until from profiles where id = '00000000-0000-0000-0000-00000000000a') is null, 'los organizadores de antes quedan sin vencimiento');
+select pg_temp.as_user(:'NUEVO');
+select pg_temp.check(is_admin(), 'durante la prueba maneja su panel');
+insert into products (name) values ('Prueba Nico');
+select pg_temp.expect_error($$update profiles set organizer_until = current_date + 999 where id = auth.uid()$$, 'no se puede alargar la prueba solo');
+select pg_temp.as_postgres();
+select pg_temp.check((select organizer_until from profiles where id = :'NUEVO') < current_date + 100, 'no se puede alargar la prueba solo');
+update profiles set organizer_until = current_date - 1 where id = :'NUEVO';
+select pg_temp.as_user(:'NUEVO');
+select pg_temp.check(not is_admin(), 'vencida la prueba, ya no es organizador');
+select pg_temp.expect_error($$insert into products (name) values ('vencido')$$, 'vencido no carga productos');
+select pg_temp.expect_error($$select admin_products()$$, 'vencido no ve su panel');
+select pg_temp.expect_error(format($$select owner_set_organizer_until(%L, null)$$, auth.uid()), 'no se habilita solo');
+select pg_temp.check(join_as_organizer((select code from k)) = 'ya', 'volver a entrar con el link no renueva la prueba');
+select pg_temp.as_user(:'OWN');
+select owner_set_organizer_until(:'NUEVO', null);
+select pg_temp.as_user(:'NUEVO');
+select pg_temp.check(is_admin(), 'el dueño lo habilita sin vencimiento');
 
 select pg_temp.as_user(:'OWN');
 select pg_temp.check((select count(*) from owner_invite) = 1, 'el dueño ve el código');
