@@ -45,8 +45,8 @@ export default function Home() {
                 <p className="text-sm text-muted">{r.prize}</p>
                 <div className="mt-4 flex items-end justify-between">
                   <div>
-                    <p className="text-xs text-muted">Participar</p>
-                    <p className="text-2xl font-extrabold text-free">Gratis</p>
+                    <p className="text-xs text-muted">Números libres</p>
+                    <p className="text-2xl font-extrabold text-free">{c.available}</p>
                   </div>
                   <p className="text-right text-xs text-muted">Cierra<br /><span className="font-semibold text-ink">{fecha(r.closesAt)}</span></p>
                 </div>

@@ -4,6 +4,27 @@ import { compressImage, photoUrl, type Product, type ProductPhoto } from '../../
 import { pesos } from '../../lib/format'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
 
+// Cuadro editable debajo de cada foto: se guarda solo al salir del cuadro.
+function Caption({ photo }: { photo: ProductPhoto }) {
+  const [text, setText] = useState(photo.caption ?? '')
+  const [state, setState] = useState<'' | 'saving' | 'saved' | 'error'>('')
+  const save = async () => {
+    if (text === (photo.caption ?? '')) return
+    setState('saving')
+    const { error } = await supabase!.from('product_photos').update({ caption: text.trim() }).eq('id', photo.id)
+    setState(error ? 'error' : 'saved')
+    if (!error) photo.caption = text.trim()
+  }
+  return (
+    <div>
+      <textarea value={text} onChange={(e) => { setText(e.target.value); setState('') }} onBlur={save} rows={3} maxLength={1000}
+        placeholder="Detalle de esta foto (ej.: cuadro de aluminio, rodado 29, incluye casco)"
+        className="mt-2 w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none focus:border-brand-500" />
+      <p className="h-4 text-xs text-muted">{state === 'saving' ? 'Guardando…' : state === 'saved' ? 'Guardado' : state === 'error' ? 'No se pudo guardar. Falta actualizar la base o no hay conexión.' : ''}</p>
+    </div>
+  )
+}
+
 function Photos({ productId }: { productId: string }) {
   const [photos, setPhotos] = useState<ProductPhoto[]>([])
   const [busy, setBusy] = useState(false)
@@ -40,15 +61,18 @@ function Photos({ productId }: { productId: string }) {
 
   return (
     <div className="mt-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {photos.map((p) => (
-          <div key={p.id} className="relative">
-            <img src={photoUrl(p.path)} alt="" className="h-20 w-20 rounded-xl object-cover" />
-            <button type="button" onClick={() => remove(p)} aria-label="Quitar foto" className="absolute -right-1.5 -top-1.5 h-6 w-6 rounded-full bg-ink text-xs text-white">×</button>
+          <div key={p.id} className="rounded-2xl border border-line p-2">
+            <div className="relative">
+              <img src={photoUrl(p.path)} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" />
+              <button type="button" onClick={() => remove(p)} aria-label="Quitar foto" className="absolute right-1.5 top-1.5 h-8 w-8 rounded-full bg-ink text-sm text-white">×</button>
+            </div>
+            <Caption photo={p} />
           </div>
         ))}
-        <label className={`flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-line text-xs text-muted ${busy ? 'opacity-50' : ''}`}>
-          {busy ? 'Subiendo…' : '+ Foto'}
+        <label className={`flex min-h-32 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-line text-sm text-muted ${busy ? 'opacity-50' : ''}`}>
+          {busy ? 'Subiendo…' : '+ Agregar foto'}
           <input type="file" accept="image/*" multiple className="hidden" disabled={busy} onChange={(e) => upload(e.target.files)} />
         </label>
       </div>

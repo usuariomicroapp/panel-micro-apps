@@ -178,7 +178,7 @@ export default function Raffles() {
                     {r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
                     {r.is_demo && <span className="ml-1 rounded-full bg-gold/30 px-2 py-0.5 text-xs font-bold text-brand-900">Prueba</span>}
                   </p>
-                  <p className="text-muted">Gratis · {r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona · cierra {fecha(r.closes_at)}</p>
+                  <p className="text-muted">{r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona · cierra {fecha(r.closes_at)}</p>
                   <p className="text-muted">Oficial: {r.official_draw_date ? r.official_draw_date.split('-').reverse().join('/') : 'sin fecha'} · {r.official_draw_slot ? slotLabels[r.official_draw_slot] : 'sin horario'}</p>
                 </div>
                 <div className="flex gap-3 text-sm font-semibold">

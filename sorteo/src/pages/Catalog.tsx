@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import RaffleImage from '../components/RaffleImage'
 import { supabase, isConfigured } from '../lib/supabase'
-import { loadPhotos, type Product } from '../lib/data'
+import { loadPhotos, type PhotoView, type Product } from '../lib/data'
 import { pesos } from '../lib/format'
 
-interface Item extends Product { photos: string[]; raffles: { id: string; name: string }[] }
+interface Item extends Product { photos: PhotoView[]; raffles: { id: string; name: string }[] }
 
 const cols = 'id, name, description, reference_price, prize_info, created_at'
 

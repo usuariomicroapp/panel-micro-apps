@@ -28,7 +28,8 @@ export interface Product {
   created_at: string
 }
 
-export interface ProductPhoto { id: string; product_id: string; path: string; position: number }
+export interface ProductPhoto { id: string; product_id: string; path: string; position: number; caption?: string }
+export interface PhotoView { url: string; caption: string }
 
 export interface Raffle {
   id: string
@@ -53,10 +54,10 @@ export interface Raffle {
 export const photoUrl = (path: string) => supabase!.storage.from('product-photos').getPublicUrl(path).data.publicUrl
 
 export async function loadPhotos(productIds: string[]) {
-  if (!productIds.length) return {} as Record<string, string[]>
+  if (!productIds.length) return {} as Record<string, PhotoView[]>
   const { data } = await supabase!.from('product_photos').select('*').in('product_id', productIds).order('position')
-  const out: Record<string, string[]> = {}
-  for (const p of (data ?? []) as ProductPhoto[]) (out[p.product_id] ??= []).push(photoUrl(p.path))
+  const out: Record<string, PhotoView[]> = {}
+  for (const p of (data ?? []) as ProductPhoto[]) (out[p.product_id] ??= []).push({ url: photoUrl(p.path), caption: p.caption ?? '' })
   return out
 }
 

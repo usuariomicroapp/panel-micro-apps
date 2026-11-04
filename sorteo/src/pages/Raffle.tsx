@@ -115,7 +115,6 @@ export default function Raffle() {
           <RaffleImage raffle={raffle} gallery className="aspect-[16/9] w-full" />
           <div className="p-5 md:p-6">
             <div className="mb-2 flex flex-wrap gap-1.5">
-              <span className="rounded-full bg-free/15 px-2.5 py-0.5 text-xs font-bold text-free">Gratis</span>
               {raffle.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Prueba</span>}
               {!open && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">{raffle.statusLabel}</span>}
             </div>
@@ -123,7 +122,7 @@ export default function Raffle() {
             {raffle.description && <p className="mt-1 whitespace-pre-line text-muted">{raffle.description}</p>}
             <dl className="mt-5 grid grid-cols-2 gap-4 text-base md:grid-cols-4">
               <div><dt className="text-sm text-muted">Premio</dt><dd className="font-semibold">{raffle.prize}</dd></div>
-              <div><dt className="text-sm text-muted">Participar</dt><dd className="font-semibold">Gratis · hasta {max} {max === 1 ? 'número' : 'números'}</dd></div>
+              <div><dt className="text-sm text-muted">Por persona</dt><dd className="font-semibold">Hasta {max} {max === 1 ? 'número' : 'números'}</dd></div>
               <div><dt className="text-sm text-muted">Sorteo oficial</dt><dd className="font-semibold">{raffle.officialDraw}</dd></div>
               <div><dt className="text-sm text-muted">Se puede elegir hasta</dt><dd className="font-semibold">{fecha(raffle.closesAt)}</dd></div>
             </dl>
@@ -137,7 +136,7 @@ export default function Raffle() {
             <ol className="mb-4 space-y-1.5 rounded-2xl bg-brand-50 p-4 text-base">
               <li><b>1.</b> Tocá un número <b className="text-free">verde</b> (o escribilo abajo).</li>
               <li><b>2.</b> Tocá <b>{max === 1 ? 'Confirmar mi número' : 'Confirmar mis números'}</b>.</li>
-              <li><b>3.</b> ¡Listo! Ya participás. Es gratis.</li>
+              <li><b>3.</b> ¡Listo! Ya participás.</li>
             </ol>
           )}
           {open && (
