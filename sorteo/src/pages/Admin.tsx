@@ -15,8 +15,8 @@ import ShareBox, { useInviteMessage } from '../components/ShareBox'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
-  { id: 'productos', label: 'Productos' },
   { id: 'sorteos', label: 'Sorteos' },
+  { id: 'productos', label: 'Productos de tienda' },
   { id: 'dia', label: 'Día del sorteo' },
   { id: 'participantes', label: 'Participantes' },
   { id: 'configuracion', label: 'Configuración' },
