@@ -48,6 +48,8 @@ function AuthForm() {
         },
       })
       if (error) setError(translate(error.message))
+      // Si el correo ya tiene cuenta, Supabase no avisa con un error: devuelve un usuario sin identidades.
+      else if (data.user && data.user.identities?.length === 0) { setMode('login'); setError('Ese correo ya tiene una cuenta. Ingresá con tu contraseña.') }
       else if (!data.session) setInfo('Te enviamos un correo para confirmar tu cuenta. Abrí el enlace y después ingresá.')
     }
     setBusy(false)
