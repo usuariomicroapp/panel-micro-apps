@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { enablePush, pushState, useInstall, type PushState } from '../lib/pwa'
+import { enablePush, hideInstall, pushState, useInstall, type PushState } from '../lib/pwa'
 import { useAuth } from '../lib/auth'
 
 const btn = 'rounded-2xl btn-gold px-5 py-3 text-lg font-bold'
@@ -25,6 +25,7 @@ export function InstallCard(_: { compact?: boolean }) {
         {canPrompt
           ? <button onClick={prompt} className="btn-gold shrink-0 rounded-xl px-4 py-2 text-sm font-extrabold">Instalar</button>
           : <button onClick={() => setSteps(!steps)} className="btn-gold shrink-0 rounded-xl px-4 py-2 text-sm font-extrabold">{steps ? 'Cerrar' : 'Cómo'}</button>}
+        <button onClick={hideInstall} aria-label="Ya la tengo instalada, no mostrar más" title="Ya la tengo" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-lg text-muted">×</button>
       </div>
       {steps && (
         <ol className="mt-3 list-decimal space-y-1.5 pl-6 text-sm">

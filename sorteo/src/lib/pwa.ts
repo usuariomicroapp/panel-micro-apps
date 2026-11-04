@@ -6,7 +6,20 @@ const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
 
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 export const isStandalone = () =>
-  window.matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true
+  ['standalone', 'fullscreen', 'minimal-ui'].some((m) => window.matchMedia(`(display-mode: ${m})`).matches) || (navigator as Navigator & { standalone?: boolean }).standalone === true
+
+// Recordamos si la app ya se instaló en este celular, para no volver a ofrecerla
+// aunque la abran desde el navegador.
+const INSTALLED_KEY = 'sorteo-app-instalada'
+const markInstalled = () => { try { localStorage.setItem(INSTALLED_KEY, '1') } catch { /* sin almacenamiento */ } }
+const wasInstalled = () => { try { return localStorage.getItem(INSTALLED_KEY) === '1' } catch { return false } }
+let relatedInstalled = false
+if (typeof window !== 'undefined') {
+  if (isStandalone()) markInstalled()
+  const nav = navigator as Navigator & { getInstalledRelatedApps?: () => Promise<unknown[]> }
+  nav.getInstalledRelatedApps?.().then((apps) => { if (apps.length) { relatedInstalled = true; markInstalled(); listeners.forEach((l) => l()) } }).catch(() => {})
+}
+export const hideInstall = () => { markInstalled(); listeners.forEach((l) => l()) }
 export const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !!VAPID_PUBLIC
 
 export function registerServiceWorker() {
@@ -20,14 +33,14 @@ let deferred: InstallEvent | null = null
 const listeners = new Set<() => void>()
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e as InstallEvent; listeners.forEach((l) => l()) })
-  window.addEventListener('appinstalled', () => { deferred = null; listeners.forEach((l) => l()) })
+  window.addEventListener('appinstalled', () => { deferred = null; markInstalled(); listeners.forEach((l) => l()) })
 }
 
 export function useInstall() {
   const [, force] = useState(0)
   useEffect(() => { const l = () => force((n) => n + 1); listeners.add(l); return () => { listeners.delete(l) } }, [])
   return {
-    installed: isStandalone(),
+    installed: isStandalone() || wasInstalled() || relatedInstalled,
     canPrompt: !!deferred,
     ios: isIOS(),
     prompt: async () => {
@@ -35,6 +48,7 @@ export function useInstall() {
       await deferred.prompt()
       const { outcome } = await deferred.userChoice
       deferred = null
+      if (outcome === 'accepted') markInstalled()
       listeners.forEach((l) => l())
       return outcome === 'accepted'
     },
