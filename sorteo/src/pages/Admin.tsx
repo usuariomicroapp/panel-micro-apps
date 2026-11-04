@@ -10,6 +10,7 @@ import Raffles from './admin/Raffles'
 import Participants from './admin/Participants'
 import Owner from './admin/Owner'
 import DrawDay from './admin/DrawDay'
+import PasswordReset from './admin/PasswordReset'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
@@ -74,7 +75,7 @@ export default function Admin() {
       {tab === 'dia' && <DrawDay />}
       {tab === 'dueno' && isOwner && <Owner />}
       {tab === 'sorteos' && <Raffles />}
-      {tab === 'participantes' && <Participants />}
+      {tab === 'participantes' && <><Participants /><PasswordReset /></>}
       {tab === 'productos' && <Products />}
       {tab === 'configuracion' && <Settings />}
       {tab === 'historial' && <History />}

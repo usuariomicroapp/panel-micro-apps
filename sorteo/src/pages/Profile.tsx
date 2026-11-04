@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
 import { InstallCard, PushCard } from '../components/AppSetup'
@@ -22,20 +22,13 @@ function AuthForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
-  const formRef = useRef<HTMLFormElement>(null)
 
-  // Manda el correo para elegir una contraseña nueva.
-  const forgot = async () => {
-    if (!supabase) return
-    const email = String(new FormData(formRef.current!).get('email') ?? '').trim()
-    setError(''); setInfo('')
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Escribí tu correo arriba y tocá de nuevo "¿Olvidaste tu contraseña?".')
-    setBusy(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/' })
-    setBusy(false)
-    if (error) return setError(translate(error.message))
-    setInfo(`Te mandamos un correo a ${email}. Abrilo y tocá el enlace para elegir una contraseña nueva. Si no lo ves, revisá Spam.`)
+  // Sin correo: el organizador le pone una contraseña nueva desde su panel.
+  const forgot = () => {
+    setError('')
+    setInfo('Escribile al organizador del sorteo por WhatsApp y pedile una contraseña nueva. Te la cambia en el momento.')
   }
+
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -70,7 +63,7 @@ function AuthForm() {
   }
 
   return (
-    <form ref={formRef} className="space-y-3 card rounded-3xl p-6" onSubmit={submit}>
+    <form className="space-y-3 card rounded-3xl p-6" onSubmit={submit}>
       <div className="grid grid-cols-2 rounded-2xl bg-canvas p-1 text-sm font-semibold">
         {(['login', 'signup'] as const).map((m) => (
           <button key={m} type="button" onClick={() => { setMode(m); setError(''); setInfo('') }}
