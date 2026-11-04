@@ -61,6 +61,9 @@ export const slotTimes: Record<DrawSlot, string> = { previa: '10:15', primera: '
 // Momento exacto del turno de la Quiniela (hora de Argentina, UTC−3).
 export const drawMoment = (date: string, slot: DrawSlot) => new Date(`${date}T${slotTimes[slot]}:00-03:00`)
 export const dateAR = (d = new Date()) => new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10)
+// Mientras no se carga el día del sorteo, la hora de cierre queda muy lejos (se elige sin apuro).
+export const NO_DRAW_YET = '2100-01-01T00:00:00Z'
+export const hasDeadline = (iso: string) => new Date(iso).getTime() < new Date(NO_DRAW_YET).getTime()
 export const dmy = (date: string) => date.split('-').reverse().join('/')
 
 export const photoUrl = (path: string) => supabase!.storage.from('product-photos').getPublicUrl(path).data.publicUrl

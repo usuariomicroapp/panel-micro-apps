@@ -3,16 +3,15 @@ import { Link } from 'react-router-dom'
 import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import {
-  compressImage, digitsFor, loadPhotos, drawMoment, slotLabels, statusLabels, unsoldLabels,
-  type DrawSlot, type Product, type Raffle, type RaffleStatus, type UnsoldPolicy,
+  compressImage, digitsFor, loadPhotos, NO_DRAW_YET, dmy, slotTimes, slotLabels, statusLabels, unsoldLabels,
+  type Product, type Raffle, type RaffleStatus, type UnsoldPolicy,
 } from '../../lib/data'
-import { fecha } from '../../lib/format'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
 
 interface Stats { taken: number; available: number; participants: number }
 
 const explain = (msg: string) => {
-  if (/active_needs_rules/.test(msg)) return 'Para activar el sorteo completá la fecha y el horario del sorteo oficial y qué pasa si el número ganador no se vendió.'
+  if (/active_needs_rules/.test(msg)) return 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor) y probá de nuevo.'
   if (/closes_after_start/.test(msg)) return 'La fecha de cierre tiene que ser posterior a la de inicio.'
   if (/digits_fit_numbers/.test(msg)) return 'La cantidad de cifras no alcanza para esa cantidad de números.'
   if (/solo puede ampliarse/.test(msg)) return 'La cantidad de números solo se puede ampliar, no reducir.'
@@ -21,14 +20,9 @@ const explain = (msg: string) => {
 }
 
 const SIZES = [100, 500, 1000]
-// Próximo día con Quiniela (lunes a sábado), a partir de mañana.
-const nextDrawDay = () => {
-  const d = new Date(Date.now() - 3 * 3600_000 + 864e5)
-  if (d.getUTCDay() === 0) d.setUTCDate(d.getUTCDate() + 1)
-  return d.toISOString().slice(0, 10)
-}
 
-// Cargar sorteo: foto, qué se sortea, descripción, cantidad de números y día de la Quiniela.
+// Cargar sorteo: foto, qué se sortea, descripción y cantidad de números.
+// El día y la Quiniela se cargan después, en "Día del sorteo", cuando el organizador quiera.
 // La foto y la descripción se guardan en un premio propio del sorteo (no aparece en la tienda).
 function RaffleForm({ initial, products, photo: current, onDone }: { initial?: Raffle; products: Product[]; photo?: string; onDone: () => void }) {
   const [err, setErr] = useState('')
@@ -51,13 +45,7 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
     const s = (k: string) => String(f.get(k) ?? '').trim()
     const name = s('name')
     const description = s('description')
-    const date = s('official_draw_date')
-    const slot = (s('official_draw_slot') || 'nocturna') as DrawSlot
     if (!initial && !photo) return setErr('Subí la foto de lo que se sortea.')
-    if (!date) return setErr('Elegí el día del sorteo.')
-    if (new Date(`${date}T12:00:00Z`).getUTCDay() === 0) return setErr('Los domingos no hay Quiniela: elegí otro día.')
-    const closes = drawMoment(date, slot)
-    if (closes.getTime() <= Date.now()) return setErr('Elegí un día y horario que todavía no hayan pasado.')
     setBusy(true); setErr('')
     try {
       // 1) El premio del sorteo (foto y descripción). No se muestra en la tienda.
@@ -87,10 +75,8 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
         description,
         total_numbers: total,
         digits: digitsFor(total),
-        ...(initial ? {} : { starts_at: new Date().toISOString() }),
-        closes_at: closes.toISOString(),
-        official_draw_date: date,
-        official_draw_slot: slot,
+        // Sin día del sorteo todavía: se carga después en "Día del sorteo".
+        ...(initial ? {} : { starts_at: new Date().toISOString(), closes_at: NO_DRAW_YET }),
         unsold_policy: (s('unsold_policy') || 'siguiente_sorteo') as UnsoldPolicy,
         no_winner_notes: s('no_winner_notes'),
         max_numbers_per_reservation: Number(s('max_numbers_per_reservation')) || 1,
@@ -142,16 +128,7 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
         </div>
         <p className="mt-1 text-xs text-muted">Gana el número igual a las últimas {digits} cifras del 1.er premio de la Quiniela de la Ciudad.</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-sm font-semibold">5. Día del sorteo
-          <input name="official_draw_date" type="date" required defaultValue={initial?.official_draw_date ?? nextDrawDay()} className={inputCls} />
-        </label>
-        <label className="block text-sm font-semibold">Quiniela
-          <select name="official_draw_slot" defaultValue={initial?.official_draw_slot ?? 'nocturna'} className={inputCls}>
-            {Object.entries(slotLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </label>
-      </div>
+      {!initial && <p className="rounded-2xl bg-gold/10 p-3 text-sm">📅 El día del sorteo y la Quiniela los cargás después, cuando quieras (por ejemplo, cuando se entreguen todos los números), en <b>Día del sorteo</b>.</p>}
 
       <details className="card rounded-2xl p-4">
         <summary className="cursor-pointer text-sm font-semibold">Más opciones</summary>
@@ -239,8 +216,10 @@ export default function Raffles() {
                     {r.raffle_no ? `N° ${r.raffle_no} · ` : ''}{r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
                     {r.is_demo && <span className="ml-1 rounded-full bg-gold/30 px-2 py-0.5 text-xs font-bold text-brand-900">Prueba</span>}
                   </p>
-                  <p className="text-muted">{r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona · cierra {fecha(r.closes_at)}</p>
-                  <p className="text-muted">Oficial: {r.official_draw_date ? r.official_draw_date.split('-').reverse().join('/') : 'sin fecha'} · {r.official_draw_slot ? slotLabels[r.official_draw_slot] : 'sin horario'}</p>
+                  <p className="text-muted">{r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona</p>
+                  <p className="text-muted">{r.official_draw_date && r.official_draw_slot
+                    ? <>Se sortea el {dmy(r.official_draw_date)} a las {slotTimes[r.official_draw_slot]} · {slotLabels[r.official_draw_slot].split(' ·')[0]}</>
+                    : 'Día del sorteo: todavía sin cargar'}</p>
                 </div>
                 <div className="flex gap-3 text-sm font-semibold">
                   {r.status !== 'draft' && <Link to={`/sorteo/${r.id}`} className="text-muted">Ver</Link>}
@@ -248,6 +227,11 @@ export default function Raffles() {
                 </div>
               </div>
               <RaffleStats id={r.id} />
+              {['draft', 'active', 'closed'].includes(r.status) && (
+                <Link to={`/admin?tab=dia&sorteo=${r.id}`} className={`${r.official_draw_date ? ghostCls : primaryCls} mt-3 block text-center`}>
+                  📅 {r.official_draw_date ? 'Cambiar día del sorteo' : 'Cargar día y Quiniela'}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

@@ -4,7 +4,7 @@ import RaffleImage from '../components/RaffleImage'
 import { InstallCard } from '../components/AppSetup'
 import { useAuth } from '../lib/auth'
 import { fecha } from '../lib/format'
-import { drawMoment, slotLabels, slotTimes, dmy } from '../lib/data'
+import { drawMoment, hasDeadline, slotLabels, slotTimes, dmy } from '../lib/data'
 import { countView, usePublicRaffles, type RaffleView } from '../lib/publicRaffles'
 import ShareBox, { useInviteMessage } from '../components/ShareBox'
 
@@ -49,7 +49,7 @@ function Featured({ r }: { r: RaffleView }) {
         <div>
           <h1 className="font-display text-3xl font-bold leading-tight md:text-4xl">{r.prize || r.name}</h1>
           <p className="mt-1.5 text-sm text-[#aab3d6]">{drawText(r)}</p>
-          {!t.done && (
+          {!t.done && hasDeadline(target) && (
             <div className="mt-4 grid grid-cols-3 gap-2">
               {cells.map(([v, l]) => (
                 <div key={l} className="rounded-2xl border border-white/10 bg-white/5 py-2.5 text-center">
@@ -83,7 +83,7 @@ function RaffleRow({ r }: { r: RaffleView }) {
       <div className="min-w-0 flex-1">
         {r.raffleNo && <p className="label text-gold-dark">Sorteo N° {r.raffleNo}</p>}
         <h2 className="truncate text-lg font-extrabold">{r.prize || r.name}</h2>
-        <p className="text-sm text-muted">{r.status === 'active' ? `Hasta ${fecha(r.closesAt)}` : r.statusLabel}</p>
+        <p className="text-sm text-muted">{r.status !== 'active' ? r.statusLabel : hasDeadline(r.closesAt) ? `Hasta ${fecha(r.closesAt)}` : 'Día del sorteo a definir'}</p>
       </div>
       <div className="pr-2 text-right">
         <p className="font-display text-2xl font-bold text-free">{c.available}</p>

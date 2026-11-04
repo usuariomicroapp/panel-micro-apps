@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import { useBrand, orgLink } from '../../lib/brand'
@@ -52,7 +52,9 @@ export default function DrawDay() {
 }
 
 function SetDrawCard({ raffles, onSaved }: { raffles: Row[]; onSaved: () => void }) {
-  const [raffleId, setRaffleId] = useState(raffles.find((r) => r.needs_new_draw || !r.official_draw_date)?.id ?? raffles[0].id)
+  const [params] = useSearchParams()
+  const asked = raffles.find((r) => r.id === params.get('sorteo'))
+  const [raffleId, setRaffleId] = useState(asked?.id ?? raffles.find((r) => r.needs_new_draw || !r.official_draw_date)?.id ?? raffles[0].id)
   const raffle = raffles.find((r) => r.id === raffleId)
   const [date, setDate] = useState(raffle?.official_draw_date ?? '')
   const [slot, setSlot] = useState<DrawSlot>(raffle?.official_draw_slot ?? 'nocturna')
