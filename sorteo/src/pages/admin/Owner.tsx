@@ -6,6 +6,7 @@ import { useBrand } from '../../lib/brand'
 import { fecha } from '../../lib/format'
 import { downloadFile } from '../../lib/download'
 import ShareBox from '../../components/ShareBox'
+import OwnerSales from './OwnerSales'
 
 const missing = (m: string) => (/app_paused|paused_message|is_owner/.test(m) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : m)
 
@@ -134,6 +135,7 @@ export default function Owner() {
   return (
     <div className="space-y-4">
       <InviteOrganizers />
+      <OwnerSales />
       <Pause />
       <Accounts />
       <Backup />
