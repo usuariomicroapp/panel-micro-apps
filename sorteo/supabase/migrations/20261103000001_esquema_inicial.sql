@@ -126,7 +126,7 @@ create table products (
 create table product_photos (
   id          uuid primary key default gen_random_uuid(),
   product_id  uuid not null references products (id) on delete cascade,
-  path        text not null check (path ~ '^[A-Za-z0-9/_.-]{1,300}$'),
+  path        text not null check (path ~ '^[A-Za-z0-9/_.-]{1,255}$'),
   position    int not null default 0,
   created_at  timestamptz not null default now()
 );

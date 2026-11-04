@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import NumberGrid, { GridLegend } from '../components/NumberGrid'
-import PrizeArt from '../components/PrizeArt'
+import RaffleImage from '../components/RaffleImage'
 import ComingSoon from '../components/ComingSoon'
-import { countStates, findDemoRaffle } from '../lib/demo'
 import { fecha, pad, pesos } from '../lib/format'
+import { countView, usePublicRaffle } from '../lib/publicRaffles'
 
 export default function Raffle() {
   const { id } = useParams()
-  const raffle = findDemoRaffle(id)
+  const { loading, error, data: raffle } = usePublicRaffle(id)
   const [selected, setSelected] = useState<Set<number>>(new Set())
 
+  if (loading) return <p className="py-20 text-center text-muted">Cargando sorteo…</p>
+  if (error) return <p className="py-20 text-center text-red-700">{error} <Link to="/" className="font-semibold text-brand-600">Volver</Link></p>
   if (!raffle) {
     return <p className="py-20 text-center text-muted">No encontramos ese sorteo. <Link to="/" className="font-semibold text-brand-600">Volver</Link></p>
   }
 
-  const c = countStates(raffle)
+  const c = countView(raffle)
+  const open = raffle.status === 'active'
   const toggle = (n: number) =>
     setSelected((prev) => {
       const next = new Set(prev)
@@ -31,17 +34,21 @@ export default function Raffle() {
       <div className="space-y-6">
         <Link to="/" className="text-sm font-medium text-muted">← Sorteos</Link>
         <div className="overflow-hidden rounded-3xl border border-line bg-surface">
-          <PrizeArt kind={raffle.art} className="aspect-[16/9] w-full" />
+          <RaffleImage raffle={raffle} gallery className="aspect-[16/9] w-full" />
           <div className="p-5 md:p-6">
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {raffle.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Sorteo de demostración</span>}
+              {!open && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">{raffle.statusLabel}</span>}
+            </div>
             <h1 className="text-2xl font-extrabold md:text-3xl">{raffle.name}</h1>
-            <p className="mt-1 text-muted">{raffle.description}</p>
+            {raffle.description && <p className="mt-1 whitespace-pre-line text-muted">{raffle.description}</p>}
             <dl className="mt-5 grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
               <div><dt className="text-muted">Premio</dt><dd className="font-semibold">{raffle.prize}</dd></div>
               <div><dt className="text-muted">Por número</dt><dd className="font-semibold">{pesos(raffle.pricePerNumber)}</dd></div>
               <div><dt className="text-muted">Sorteo oficial</dt><dd className="font-semibold">{raffle.officialDraw}</dd></div>
               <div><dt className="text-muted">Cierre</dt><dd className="font-semibold">{fecha(raffle.closesAt)}</dd></div>
             </dl>
-            <p className="mt-4 rounded-xl bg-canvas p-3 text-sm"><span className="font-semibold">Regla: </span>{raffle.rule}. Ejemplo: si sale 8537, gana el 37.</p>
+            <p className="mt-4 rounded-xl bg-canvas p-3 text-sm"><span className="font-semibold">Regla: </span>{raffle.rule}. Ejemplo: si sale 8537, gana el {raffle.digits === 2 ? '37' : '8537'.slice(-raffle.digits)}.{raffle.unsold && <> Si el número ganador no se vendió: {raffle.unsold.toLowerCase()}.</>}</p>
           </div>
         </div>
 
@@ -50,7 +57,7 @@ export default function Raffle() {
             <h2 className="text-lg font-bold">Elegí tus números</h2>
             <GridLegend />
           </div>
-          <NumberGrid total={raffle.totalNumbers} digits={raffle.digits} states={raffle.states} selected={selected} onToggle={toggle} />
+          <NumberGrid total={raffle.totalNumbers} digits={raffle.digits} states={raffle.states} selected={selected} onToggle={open ? toggle : () => {}} />
           <p className="mt-3 text-xs text-muted">{c.available} disponibles · {c.reserved} reservados · {c.paid} pagados</p>
         </section>
       </div>
@@ -75,7 +82,7 @@ export default function Raffle() {
           </div>
           <button disabled className="mt-4 w-full cursor-not-allowed rounded-2xl bg-brand-600/40 py-3.5 font-bold text-white">Reservar números</button>
           <div className="mt-3">
-            <ComingSoon stage={6}>Las reservas reales se activan con la base de datos. Hoy solo se calcula el total.</ComingSoon>
+            <ComingSoon stage={6}>{open ? "Las reservas se activan en la próxima etapa. Hoy solo se calcula el total." : "Este sorteo ya no recibe reservas."}</ComingSoon>
           </div>
         </div>
       </aside>

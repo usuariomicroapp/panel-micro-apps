@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom'
-import PrizeArt from '../components/PrizeArt'
-import { countStates, demoRaffles } from '../lib/demo'
+import RaffleImage from '../components/RaffleImage'
+import { useAuth } from '../lib/auth'
 import { fecha, pesos } from '../lib/format'
+import { countView, usePublicRaffles } from '../lib/publicRaffles'
 
 export default function Home() {
+  const { loading, error, data } = usePublicRaffles()
+  const { profile } = useAuth()
   return (
     <div>
       <section className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 to-brand-600 p-6 text-white md:p-10">
@@ -13,13 +16,31 @@ export default function Home() {
         <Link to="/bienvenida" className="mt-4 inline-block text-sm font-semibold text-white underline underline-offset-4">Ver pantalla de bienvenida</Link>
       </section>
 
+      {loading && <p className="py-16 text-center text-muted">Cargando sorteos…</p>}
+      {error && <p className="rounded-2xl bg-red-50 p-4 text-center text-sm text-red-700">{error}</p>}
+      {!loading && !error && data.length === 0 && (
+        <div className="rounded-3xl border border-dashed border-line bg-surface p-10 text-center">
+          <h2 className="text-lg font-bold">Todavía no hay sorteos publicados</h2>
+          <p className="mt-1 text-sm text-muted">Cuando se publique uno, lo vas a ver acá.</p>
+          {profile?.role === 'admin' && (
+            <Link to="/admin?tab=sorteos" className="mt-5 inline-block rounded-2xl bg-brand-600 px-5 py-3 font-bold text-white">Crear un sorteo</Link>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {demoRaffles.map((r) => {
-          const c = countStates(r)
+        {data.map((r) => {
+          const c = countView(r)
           const pct = Math.round((c.paid / r.totalNumbers) * 100)
           return (
             <Link key={r.id} to={`/sorteo/${r.id}`} className="group overflow-hidden rounded-3xl border border-line bg-surface shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-              <PrizeArt kind={r.art} className="aspect-[16/10] w-full" />
+              <div className="relative">
+                <RaffleImage raffle={r} className="aspect-[16/10] w-full" />
+                <div className="absolute left-3 top-3 flex gap-1.5">
+                  {r.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Demostración</span>}
+                  {r.status !== 'active' && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">{r.statusLabel}</span>}
+                </div>
+              </div>
               <div className="p-5">
                 <h2 className="text-lg font-bold">{r.name}</h2>
                 <p className="text-sm text-muted">{r.prize}</p>

@@ -6,17 +6,19 @@ import Overview from './admin/Overview'
 import Settings from './admin/Settings'
 import PaymentMethods from './admin/PaymentMethods'
 import History from './admin/History'
+import Products from './admin/Products'
+import Raffles from './admin/Raffles'
 
 const tabs = [
   { id: 'resumen', label: 'Resumen' },
+  { id: 'sorteos', label: 'Sorteos' },
+  { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
   { id: 'pagos', label: 'Medios de pago' },
   { id: 'historial', label: 'Historial' },
 ] as const
 
 const upcoming = [
-  { title: 'Productos', desc: 'Crear, editar, fotos, costo y precio de referencia', stage: 5 },
-  { title: 'Sorteos', desc: 'Fechas, lotería, cantidad de números, precio, activar', stage: 5 },
   { title: 'Pagos pendientes', desc: 'Comprobantes, aprobar o rechazar', stage: 7 },
   { title: 'Resultados', desc: 'Confirmar resultado oficial y publicar ganador', stage: 8 },
 ]
@@ -70,6 +72,8 @@ export default function Admin() {
           </div>
         </>
       )}
+      {tab === 'sorteos' && <Raffles />}
+      {tab === 'productos' && <Products />}
       {tab === 'configuracion' && <Settings />}
       {tab === 'pagos' && <PaymentMethods />}
       {tab === 'historial' && <History />}
