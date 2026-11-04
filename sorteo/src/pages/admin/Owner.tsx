@@ -152,10 +152,47 @@ function InviteOrganizers() {
   )
 }
 
+interface InstallStats { total: number; this_month: number; last_7_days: number; active_30_days: number; with_account: number; android: number; iphone: number; computadora: number }
+
+// Cuántos instalaron la app: aparatos que la abrieron desde el ícono instalado.
+function Installs() {
+  const [s, setS] = useState<InstallStats | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    supabase!.rpc('owner_install_stats').then(({ data, error }) => {
+      if (error) setErr(/owner_install_stats|schema cache|function/i.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message)
+      else setS(((data ?? []) as InstallStats[])[0] ?? null)
+    })
+  }, [])
+  if (err) return <Notice kind="error">{err}</Notice>
+  if (!s) return null
+  const n = (x: number) => Number(x).toLocaleString('es-AR')
+  const box = (label: string, value: number, sub: string, gold = false) => (
+    <div className={`${gold ? 'navycard' : 'card'} rounded-2xl p-4`}>
+      <p className={`label ${gold ? 'text-[#f6e0a4]' : 'text-muted'}`}>{label}</p>
+      <p className={`mt-1 font-display text-2xl font-bold tabular-nums ${gold ? 'gold-text' : ''}`}>{n(value)}</p>
+      <p className={`text-xs ${gold ? 'text-[#aab3d6]' : 'text-muted'}`}>{sub}</p>
+    </div>
+  )
+  return (
+    <Card title="📲 Instalaciones de la app" collapsible defaultOpen hint={`${n(s.total)} en total · ${n(s.this_month)} este mes`}>
+      <div className="grid grid-cols-2 gap-3">
+        {box('Instalada en', s.total, 'celulares y computadoras', true)}
+        {box('Nuevas este mes', s.this_month, `${n(s.last_7_days)} en los últimos 7 días`)}
+        {box('La usaron', s.active_30_days, 'en los últimos 30 días')}
+        {box('Con cuenta', s.with_account, 'además de instalarla, se registraron')}
+      </div>
+      <p className="mt-3 text-sm text-muted">Android: {n(s.android)} · iPhone: {n(s.iphone)} · Computadora: {n(s.computadora)}</p>
+      <p className="mt-2 text-xs text-muted">Se cuenta cada aparato la primera vez que abre la app desde el ícono instalado. Quien la instaló antes de hoy se suma la próxima vez que la abra.</p>
+    </Card>
+  )
+}
+
 export default function Owner() {
   return (
     <div className="space-y-4">
       <InviteOrganizers />
+      <Installs />
       <OwnerSales />
       <Pause />
       <Accounts />

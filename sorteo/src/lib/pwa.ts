@@ -104,3 +104,18 @@ export async function resyncPush() {
   const j = sub.toJSON()
   await supabase.rpc('save_push_subscription', { p_endpoint: j.endpoint, p_keys: j.keys })
 }
+
+// Cuenta este aparato como "app instalada" (para el panel del dueño). Un código al azar, sin datos personales.
+const DEVICE_KEY = 'sorteo-aparato'
+const platform = () => (isIOS() ? 'iphone' : /android/i.test(navigator.userAgent) ? 'android' : /mobile/i.test(navigator.userAgent) ? 'otro' : 'computadora')
+export async function trackInstall(org: string | null, uid: string | null) {
+  if (!supabase || !isStandalone()) return
+  try {
+    let id = localStorage.getItem(DEVICE_KEY)
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem(DEVICE_KEY, id) }
+    const mark = `${new Date().toISOString().slice(0, 10)}|${uid ?? ''}`
+    if (localStorage.getItem(DEVICE_KEY + '-visto') === mark) return
+    const { error } = await supabase.rpc('register_install', { p_device: id, p_platform: platform(), p_org: org })
+    if (!error) localStorage.setItem(DEVICE_KEY + '-visto', mark)
+  } catch { /* sin almacenamiento o sin señal */ }
+}
