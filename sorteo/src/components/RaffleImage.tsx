@@ -8,14 +8,22 @@ type Props = { raffle: Pick<RaffleView, 'name' | 'prize' | 'photos' | 'art'>; cl
 // Sin fotos: la ilustración de ejemplo o un fondo neutro.
 export default function RaffleImage({ raffle, className = '', gallery = false }: Props) {
   const [i, setI] = useState(0)
+  const [big, setBig] = useState(false)
   const photos = raffle.photos
   if (photos.length) {
     const cur = photos[Math.min(i, photos.length - 1)]
     const many = gallery && photos.length > 1
     return (
       <div>
-        <div className={`relative bg-canvas ${className}`}>
-          <img src={cur.url} alt={cur.caption || `Foto del premio: ${raffle.prize || raffle.name}`} className="h-full w-full object-cover" loading="lazy" />
+        <div className={`relative overflow-hidden bg-night ${className}`}>
+          {/* La foto entera, sin recortar. Detrás, la misma foto borrosa para llenar el recuadro. */}
+          <img src={cur.url} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-xl" loading="lazy" />
+          <img src={cur.url} alt={cur.caption || `Foto del premio: ${raffle.prize || raffle.name}`} className="relative h-full w-full object-contain" loading="lazy" />
+          {gallery && (
+            <button type="button" onClick={() => setBig(true)} aria-label="Ver la foto en grande"
+              className="absolute inset-0 h-full w-full cursor-zoom-in" />
+          )}
+          {gallery && <span className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-night/70 px-2.5 py-0.5 text-xs font-semibold text-white">🔍 Tocá para ver en grande</span>}
           {many && (
             <>
               <button type="button" onClick={() => setI((i - 1 + photos.length) % photos.length)} aria-label="Foto anterior"
@@ -26,6 +34,13 @@ export default function RaffleImage({ raffle, className = '', gallery = false }:
             </>
           )}
         </div>
+        {big && (
+          <div role="dialog" aria-modal="true" onClick={() => setBig(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-3">
+            <img src={cur.url} alt={cur.caption || raffle.prize || raffle.name} className="max-h-full max-w-full object-contain" />
+            <button type="button" onClick={() => setBig(false)} aria-label="Cerrar"
+              className="absolute right-3 top-3 h-12 w-12 rounded-full bg-white text-2xl font-bold text-night shadow">×</button>
+          </div>
+        )}
         {gallery && cur.caption && <p className="whitespace-pre-line border-b border-line bg-brand-50 px-5 py-3 text-base">{cur.caption}</p>}
       </div>
     )
