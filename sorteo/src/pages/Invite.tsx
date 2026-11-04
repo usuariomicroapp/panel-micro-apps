@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import qrcode from 'qrcode-generator'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
-import { useBrand } from '../lib/brand'
+import { useBrand, orgLink } from '../lib/brand'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../components/ui'
 
 interface Links { group_link: string; install_link: string; share_message: string }
@@ -25,24 +25,17 @@ function qrDataUrl(text: string, cell = 8) {
 
 export default function Invite() {
   const { isAdmin } = useAuth()
-  const { name: brand } = useBrand()
-  const [row, setRow] = useState<Links | null>(null)
+  const b = useBrand()
+  const brand = b.name
   const [copied, setCopied] = useState('')
   const [qrOf, setQrOf] = useState<'app' | 'group'>('app')
+  const row: Links = { group_link: b.groupLink, install_link: b.installLink, share_message: b.shareMessage }
 
-  useEffect(() => {
-    if (!supabase) return setRow({ group_link: '', install_link: '', share_message: DEFAULT_MESSAGE })
-    supabase.from('settings').select('group_link, install_link, share_message').eq('id', 1).maybeSingle()
-      .then(({ data }) => setRow((data as Links) ?? { group_link: '', install_link: '', share_message: DEFAULT_MESSAGE }))
-  }, [])
-
-  const app = row?.install_link || `${window.location.origin}/`
-  const group = row?.group_link ?? ''
-  const message = useMemo(() => (row ? buildMessage(row.share_message, brand, group, app) : ''), [row, brand, group, app])
+  const app = orgLink(b)
+  const group = b.groupLink
+  const message = useMemo(() => buildMessage(b.shareMessage, brand, group, app), [b.shareMessage, brand, group, app])
   const qrText = qrOf === 'group' && group ? group : app
   const qr = useMemo(() => qrDataUrl(qrText), [qrText])
-
-  if (!row) return <p className="py-20 text-center text-muted">Cargando…</p>
 
   const copy = async (what: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(what) } catch { setCopied('') }
@@ -97,7 +90,7 @@ export default function Invite() {
         </div>
       </Card>
 
-      {isAdmin && <EditLinks row={row} onSaved={setRow} />}
+      {isAdmin && <EditLinks row={row} org={b.org} onSaved={b.refresh} />}
     </div>
   )
 }
@@ -116,7 +109,7 @@ function LinkBox({ letter, title, value, empty, copied, onCopy }: { letter: stri
   )
 }
 
-function EditLinks({ row, onSaved }: { row: Links; onSaved: (r: Links) => void }) {
+function EditLinks({ row, org, onSaved }: { row: Links; org: string | null; onSaved: () => void }) {
   const [group, setGroup] = useState(row.group_link)
   const [app, setApp] = useState(row.install_link)
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
@@ -131,10 +124,13 @@ function EditLinks({ row, onSaved }: { row: Links; onSaved: (r: Links) => void }
     if (g && !/^https:\/\/\S+$/.test(g)) return setMsg({ kind: 'error', text: 'El enlace del grupo tiene que empezar con https:// (copialo desde WhatsApp: Info del grupo → Invitar mediante enlace).' })
     if (a && !/^https:\/\/\S+$/.test(a)) return setMsg({ kind: 'error', text: 'El enlace de la app tiene que empezar con https://' })
     setBusy(true)
-    const { error } = await supabase!.from('settings').update({ group_link: g, install_link: a, updated_at: new Date().toISOString() }).eq('id', 1)
+    const upd = { group_link: g, install_link: a, updated_at: new Date().toISOString() }
+    const { error } = org
+      ? await supabase!.from('organizer_settings').update(upd).eq('organizer_id', org)
+      : await supabase!.from('settings').update(upd).eq('id', 1)
     setBusy(false)
     if (error) return setMsg({ kind: 'error', text: error.message })
-    onSaved({ ...row, group_link: g, install_link: a })
+    onSaved()
     setMsg({ kind: 'ok', text: 'Enlaces guardados.' })
   }
 

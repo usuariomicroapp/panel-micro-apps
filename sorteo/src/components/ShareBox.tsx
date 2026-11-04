@@ -1,20 +1,13 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { useBrand } from '../lib/brand'
+import { useState } from 'react'
+import { useBrand, orgLink } from '../lib/brand'
 import { buildMessage } from '../pages/Invite'
 import Icon from './Icon'
 
-// Mensaje y enlace para invitar participantes, con el texto que eligió el organizador.
+// Mensaje y enlace para invitar participantes, con el texto y el link del organizador.
 export function useInviteMessage() {
-  const { name: brand } = useBrand()
-  const [row, setRow] = useState<{ group_link: string; install_link: string; share_message: string } | null>(null)
-  useEffect(() => {
-    if (!supabase) return
-    supabase.from('settings').select('group_link, install_link, share_message').eq('id', 1).maybeSingle()
-      .then(({ data }) => setRow((data as typeof row) ?? { group_link: '', install_link: '', share_message: '' }))
-  }, [])
-  const link = row?.install_link || `${window.location.origin}/`
-  return { link, message: buildMessage(row?.share_message ?? '', brand, row?.group_link ?? '', link) }
+  const b = useBrand()
+  const link = orgLink(b)
+  return { link, message: buildMessage(b.shareMessage, b.name, b.groupLink, link) }
 }
 
 // Caja para compartir un enlace: botón grande, WhatsApp y copiar.

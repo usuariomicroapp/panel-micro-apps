@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
+import { useBrand, orgLink } from '../../lib/brand'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
 import QuinielaBoard from '../../components/QuinielaBoard'
 import { useQuiniela } from '../../lib/quiniela'
@@ -28,7 +30,7 @@ export default function DrawDay() {
   const [raffles, setRaffles] = useState<Row[] | null>(null)
   const [loadError, setLoadError] = useState('')
   const load = useCallback(async () => {
-    const { data, error } = await supabase!.from('raffles').select('*, products(name)').in('status', ['draft', 'active', 'closed']).order('raffle_no')
+    const { data, error } = await supabase!.from('raffles').select('*, products(name)').eq('organizer_id', await myId()).in('status', ['draft', 'active', 'closed']).order('raffle_no')
     if (error) setLoadError(explain(error.message))
     setRaffles((data ?? []) as Row[])
   }, [])
@@ -278,12 +280,13 @@ function resultMessage(r: Published, appUrl: string) {
   if (r.outcome === 'ganador') lines.push(`Número ganador: ${num}. Ganó ${shortName(r.name).replace(/\.$/, "")}. ¡Felicitaciones! El premio se le entrega a la persona ganadora.`)
   else if (r.outcome === 'siguiente_sorteo') lines.push(`Salió el ${num} y nadie lo tenía, así que el sorteo pasa a la próxima Quiniela. Les aviso el nuevo día.`)
   else lines.push(`Salió el ${num} y nadie lo tenía: el sorteo quedó desierto.`)
-  lines.push('', `Ver el resultado: ${appUrl}/#/resultados`)
+  lines.push('', `Ver el resultado: ${appUrl}`)
   return lines.join('\n')
 }
 
 function ShareResult({ result }: { result: Published }) {
-  const text = resultMessage(result, window.location.origin)
+  const brand = useBrand()
+  const text = resultMessage(result, `${orgLink({ code: brand.code, installLink: '' })}#/resultados`)
   const [copied, setCopied] = useState(false)
   const share = async () => {
     if (navigator.share) {

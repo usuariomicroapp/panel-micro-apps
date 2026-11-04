@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import RaffleImage from '../components/RaffleImage'
 import { supabase, isConfigured } from '../lib/supabase'
+import { useBrand } from '../lib/brand'
 import { loadPhotos, type PhotoView, type Product } from '../lib/data'
 import { pesos } from '../lib/format'
 
@@ -11,6 +12,7 @@ const cols = 'id, name, description, reference_price, prize_info, created_at'
 
 // Catálogo de premios tipo tienda: fotos, detalles y precio de cada producto.
 export default function Catalog() {
+  const { org } = useBrand()
   const [items, setItems] = useState<Item[] | null>(isConfigured ? null : [])
   const [error, setError] = useState('')
 
@@ -18,7 +20,11 @@ export default function Catalog() {
     if (!supabase) return
     let alive = true
     ;(async () => {
-      const query = (c: string) => supabase!.from('products').select(c).order('created_at', { ascending: false })
+      const query = (c: string) => {
+        let q = supabase!.from('products').select(c)
+        if (org) q = q.eq('organizer_id', org)
+        return q.order('created_at', { ascending: false })
+      }
       // Si la base todavía no tiene la columna show_in_store, se muestran todos.
       let res = await query(cols + ', show_in_store')
       if (res.error) res = await query(cols)
@@ -39,7 +45,7 @@ export default function Catalog() {
     return () => {
       alive = false
     }
-  }, [])
+  }, [org])
 
   return (
     <div className="space-y-6">

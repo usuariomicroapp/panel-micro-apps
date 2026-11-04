@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import {
   digitsFor, fromInputDateTime, slotLabels, statusLabels, toInputDateTime, unsoldLabels,
@@ -148,7 +149,7 @@ export default function Raffles() {
 
   const load = async () => {
     const [{ data: r }, { data: p }] = await Promise.all([
-      supabase!.from('raffles').select('*').order('created_at', { ascending: false }),
+      supabase!.from('raffles').select('*').eq('organizer_id', await myId()).order('created_at', { ascending: false }),
       supabase!.rpc('admin_products'),
     ])
     setItems((r ?? []) as Raffle[])

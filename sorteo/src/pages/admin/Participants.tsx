@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import { Card, Notice, inputCls, primaryCls } from '../../components/ui'
 import NumberGrid, { GridLegend } from '../../components/NumberGrid'
@@ -34,7 +35,7 @@ export default function Participants() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    supabase!.from('raffles').select('*').in('status', ['active', 'closed', 'drawn']).order('closes_at').then(({ data }) => {
+    void myId().then((me) => supabase!.from('raffles').select('*').eq('organizer_id', me).in('status', ['active', 'closed', 'drawn']).order('closes_at')).then(({ data }) => {
       const list = (data ?? []) as Raffle[]
       setRaffles(list)
       if (list.length) setRaffleId(list[0].id)

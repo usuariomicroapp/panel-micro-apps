@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import Icon, { type IconName } from '../../components/Icon'
 
@@ -17,14 +18,15 @@ export default function Overview() {
 
   useEffect(() => {
     void (async () => {
+      const me = await myId()
       const [raffles, active, taken, accounts, entries, drawn, mainRes] = await Promise.all([
-        count('raffles'),
-        count('raffles', (q) => q.eq('status', 'active')),
+        count('raffles', (q) => q.eq('organizer_id', me)),
+        count('raffles', (q) => q.eq('organizer_id', me).eq('status', 'active')),
         count('raffle_numbers', (q) => q.neq('state', 'available')),
         count('profiles', (q) => q.eq('role', 'participant')),
-        supabase!.from('reservations').select('user_id, buyer_name, buyer_phone').eq('status', 'approved'),
-        count('raffles', (q) => q.eq('status', 'drawn')),
-        supabase!.from('raffles').select('id, name, raffle_no, total_numbers').eq('status', 'active').order('closes_at').limit(1),
+        supabase!.from('reservations').select('user_id, buyer_name, buyer_phone, raffles!inner(organizer_id)').eq('raffles.organizer_id', me).eq('status', 'approved'),
+        count('raffles', (q) => q.eq('organizer_id', me).eq('status', 'drawn')),
+        supabase!.from('raffles').select('id, name, raffle_no, total_numbers').eq('organizer_id', me).eq('status', 'active').order('closes_at').limit(1),
       ])
       const m = ((mainRes.data ?? []) as { id: string; name: string; raffle_no: number | null; total_numbers: number }[])[0]
       const mainTaken = m ? await count('raffle_numbers', (q) => q.eq('raffle_id', m.id).neq('state', 'available')) : 0

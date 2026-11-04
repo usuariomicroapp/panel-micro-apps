@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useBrand } from './brand'
 import { supabase, isConfigured } from './supabase'
 import { demoRaffles, type DemoRaffle, type NumberState } from './demo'
 import { loadNumberStates, loadPhotos, type PhotoView, slotLabels, statusLabels, unsoldLabels, type Raffle, type RaffleStatus, type DrawSlot } from './data'
@@ -76,12 +77,16 @@ type Load<T> = { loading: boolean; error: string; data: T }
 
 // Lista pública: sorteos activos y cerrados (los borradores no se ven por las reglas de la base).
 export function usePublicRaffles(): Load<RaffleView[]> {
+  const { org } = useBrand()
   const [state, setState] = useState<Load<RaffleView[]>>({ loading: isConfigured, error: '', data: isConfigured ? [] : demoRaffles.map(fromDemo) })
   useEffect(() => {
     if (!supabase) return
     let alive = true
     ;(async () => {
-      const { data, error } = await supabase.from('raffles').select(select).in('status', ['active', 'closed']).order('closes_at')
+      // Con link de un organizador se ven solo sus sorteos.
+      let q = supabase.from('raffles').select(select).in('status', ['active', 'closed'])
+      if (org) q = q.eq('organizer_id', org)
+      const { data, error } = await q.order('closes_at')
       if (error) {
         if (alive) setState({ loading: false, error: 'No se pudieron cargar los sorteos. Probá de nuevo en un rato.', data: [] })
         return
@@ -94,7 +99,7 @@ export function usePublicRaffles(): Load<RaffleView[]> {
     return () => {
       alive = false
     }
-  }, [])
+  }, [org])
   return state
 }
 
