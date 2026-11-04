@@ -66,7 +66,7 @@ function BrandSettings() {
   }
 
   return (
-    <Card title="Tu emprendimiento" collapsible hint="Nombre, logo y colores">
+    <Card title="Tu emprendimiento" collapsible defaultOpen hint="Nombre, logo y colores">
       <div className="space-y-4">
         <div className="flex items-center gap-4">
           <BrandMark size={72} />

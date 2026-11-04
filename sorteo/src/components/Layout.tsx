@@ -27,7 +27,8 @@ export default function Layout() {
   const { paused, pausedMessage } = useBrand()
   // El participante solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
   // El dueño comparte desde su panel. El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
-  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin && !isOwner : n.to === '/mis-numeros' ? !isAdmin : true))
+  // El organizador tiene su perfil dentro del panel (botón Perfil), no abajo.
+  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin && !isOwner : n.to === '/mis-numeros' ? !isAdmin : n.to === '/perfil' ? !(isAdmin && !isOwner) : true))
   const dark = isDark(pathname)
   useEffect(() => {
     window.scrollTo(0, 0)
