@@ -4,6 +4,7 @@ import { Card, Notice, inputCls, primaryCls } from '../../components/ui'
 import { useAuth, type Profile } from '../../lib/auth'
 import { useBrand } from '../../lib/brand'
 import { fecha } from '../../lib/format'
+import { downloadFile } from '../../lib/download'
 
 const missing = (m: string) => (/app_paused|paused_message|is_owner/.test(m) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : m)
 
@@ -98,12 +99,35 @@ function Accounts() {
   )
 }
 
+// Copia completa de la base en un archivo, para guardar en Drive o en la PC.
+function Backup() {
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const download = async () => {
+    setBusy(true); setMsg(null)
+    const { data, error } = await supabase!.rpc('owner_backup')
+    setBusy(false)
+    if (error) return setMsg({ kind: 'error', text: /owner_backup/.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message })
+    const day = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
+    downloadFile(`copia-sorteo-${day}.json`, JSON.stringify(data, null, 1), 'application/json')
+    setMsg({ kind: 'ok', text: 'Copia descargada. Guardala en un lugar seguro: tiene nombres y teléfonos.' })
+  }
+  return (
+    <Card title="Copia de seguridad">
+      <p className="text-sm text-muted">Descarga todos los datos de esta app (sorteos, premios, participantes, resultados) en un solo archivo. Conviene hacerlo una vez por semana. Las fotos quedan guardadas en Supabase.</p>
+      {msg && <div className="mt-3"><Notice kind={msg.kind}>{msg.text}</Notice></div>}
+      <button onClick={download} disabled={busy} className={`${primaryCls} mt-4`}>{busy ? 'Preparando…' : 'Descargar copia de seguridad'}</button>
+    </Card>
+  )
+}
+
 export default function Owner() {
   return (
     <div className="space-y-6">
       <Notice kind="ok">Este es tu panel de dueño. Tu cliente (el organizador) no lo ve y no puede quitarte el control.</Notice>
       <Pause />
       <Accounts />
+      <Backup />
     </div>
   )
 }

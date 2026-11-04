@@ -6,6 +6,7 @@ import { loadNumberStates, raffleLabel, type Raffle } from '../../lib/data'
 import type { NumberState } from '../../lib/demo'
 import { fecha, pad, waLink } from '../../lib/format'
 import { sendPendingPush } from '../../lib/pwa'
+import { downloadFile, toCsv } from '../../lib/download'
 
 interface Entry {
   id: string
@@ -108,6 +109,12 @@ export default function Participants() {
   const chosen = [...selected].sort((a, b) => a - b)
   const open = raffle?.status === 'active'
   const filter = q.trim()
+  const exportCsv = () => {
+    const rows: (string | number)[][] = [['Número', 'Nombre', 'Teléfono', 'Origen', 'Fecha', 'Notas']]
+    for (const en of entries) for (const n of en.numbers) rows.push([pad(n, digits), en.buyer_name ?? '', en.buyer_phone ?? '', en.manual ? 'En persona' : 'App', fecha(en.created_at), en.notes ?? ''])
+    rows.sort((a, b) => (a[0] === 'Número' ? -1 : b[0] === 'Número' ? 1 : String(a[0]).localeCompare(String(b[0]))))
+    downloadFile(`participantes-${(raffle?.name ?? 'sorteo').replace(/[^\w-]+/g, '-')}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
+  }
   const shown = entries.filter((en) => !filter || `${en.buyer_name} ${en.buyer_phone} ${en.numbers.map((n) => pad(n, digits)).join(' ')}`.toLowerCase().includes(filter.toLowerCase()))
 
   return (
@@ -120,6 +127,9 @@ export default function Participants() {
 
       <Card title={`Quién tiene cada número (${entries.reduce((a, en) => a + en.numbers.length, 0)} elegidos)`}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, teléfono o número" className={inputCls} />
+        {entries.length > 0 && (
+          <button onClick={exportCsv} className="mt-3 rounded-xl border border-line px-4 py-2 text-sm font-semibold">Descargar lista (Excel)</button>
+        )}
         {shown.length === 0 ? <p className="mt-3 text-sm text-muted">{entries.length ? 'No hay coincidencias.' : 'Todavía nadie eligió números en este sorteo.'}</p> : (
           <ul className="mt-3 divide-y divide-line">
             {shown.map((en) => (
