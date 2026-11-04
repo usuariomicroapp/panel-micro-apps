@@ -56,7 +56,7 @@ function BrandSettings() {
   }
 
   return (
-    <Card title="Tu emprendimiento">
+    <Card title="Tu emprendimiento" collapsible hint="Nombre, logo y colores">
       <div className="space-y-4">
         <div className="flex items-center gap-4">
           <BrandMark size={72} />
@@ -131,7 +131,7 @@ function GeneralSettings({ row, setRow, msg, setMsg, busy, setBusy }: {
   }
 
   return (
-    <Card title="Configuración">
+    <Card title="Configuración" collapsible hint="Mensajes y opciones de la app">
       <form onSubmit={save} className="space-y-4">
         <label className="block text-sm font-medium">Enlace del grupo de WhatsApp
           <input name="group_link" type="url" defaultValue={row.group_link} placeholder="https://chat.whatsapp.com/..." className={inputCls} />

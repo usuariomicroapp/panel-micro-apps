@@ -20,11 +20,11 @@ const isDark = (path: string) => path.startsWith('/admin') || path.startsWith('/
 
 export default function Layout() {
   const { pathname } = useLocation()
-  const { isAdmin, viewAsBuyer, setViewAsBuyer } = useAuth()
+  const { isAdmin, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
   const { paused, pausedMessage } = useBrand()
   // El participante solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
-  // El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
-  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin : n.to === '/mis-numeros' ? !isAdmin : true))
+  // El dueño comparte desde su panel. El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
+  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin && !isOwner : n.to === '/mis-numeros' ? !isAdmin : true))
   const dark = isDark(pathname)
   useEffect(() => {
     window.scrollTo(0, 0)

@@ -6,6 +6,7 @@ import { useAuth } from '../lib/auth'
 import { fecha } from '../lib/format'
 import { drawMoment, slotLabels, slotTimes, dmy } from '../lib/data'
 import { countView, usePublicRaffles, type RaffleView } from '../lib/publicRaffles'
+import ShareBox, { useInviteMessage } from '../components/ShareBox'
 
 const two = (n: number) => String(Math.max(0, n)).padStart(2, '0')
 
@@ -119,7 +120,14 @@ export default function Home() {
           </div>
         </section>
       )}
+      {!isAdmin && <InviteOthers />}
       <p className="text-center text-sm text-muted">Cada sorteo usa las últimas cifras del 1.er premio de la Quiniela de la Ciudad.</p>
     </div>
   )
+}
+
+// Para que el participante invite a otras personas a los sorteos.
+function InviteOthers() {
+  const { link, message } = useInviteMessage()
+  return <ShareBox title="Invitá a otras personas" text="¿Conocés a alguien que quiera participar? Mandale este link para que instale la app y elija su número." message={message} link={link} button="Invitar" />
 }
