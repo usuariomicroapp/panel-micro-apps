@@ -9,6 +9,10 @@ import { sendPendingPush } from '../../lib/pwa'
 
 type Row = Raffle & { products: { name: string } | null }
 type Preview = { used_prize: string; winning_number: number; name: string; phone: string; from_app: boolean; outcome: string }
+type Published = {
+  outcome: string; winning_number: number; name: string; phone: string
+  label: string; digits: number; raffleTitle: string; when: string; slot: DrawSlot; firstPrize: string
+}
 type Msg = { kind: 'ok' | 'error'; text: string } | null
 
 const slots = Object.keys(slotTimes) as DrawSlot[]
@@ -130,7 +134,7 @@ function ResultCard({ raffles, onPublished }: { raffles: Row[]; onPublished: () 
   const [first, setFirst] = useState('')
   const [second, setSecond] = useState('')
   const [preview, setPreview] = useState<Preview | null>(null)
-  const [published, setPublished] = useState<{ outcome: string; winning_number: number; name: string; phone: string; label: string } | null>(null)
+  const [published, setPublished] = useState<Published | null>(null)
   const [msg, setMsg] = useState<Msg>(null)
   const [busy, setBusy] = useState(false)
   const needsSecond = raffle?.unsold_policy === 'segundo_premio'
@@ -141,12 +145,13 @@ function ResultCard({ raffles, onPublished }: { raffles: Row[]; onPublished: () 
   useEffect(() => { setFirst(''); setSecond(''); setPreview(null); setMsg(null) }, [raffle?.id])
 
   if (published) {
-    const text = `¡Hola ${published.name.split(' ')[0]}! Salió tu número ${published.winning_number} en la Quiniela de la Ciudad: ganaste ${published.label}. Comunicate conmigo para coordinar la entrega.`
+    const num = pad(published.winning_number, published.digits)
+    const text = `¡Hola ${published.name.split(' ')[0]}! Salió tu número ${num} en la Quiniela de la Ciudad: ganaste ${published.label}. Comunicate conmigo para coordinar la entrega.`
     return (
       <Card title="Resultado publicado">
         {published.outcome === 'ganador' ? (
           <div className="space-y-4">
-            <p className="text-lg">Ganó <b>{published.name}</b> con el número <b>{published.winning_number}</b>. Ya le apareció el aviso en la app{published.phone ? ' y podés escribirle ahora:' : '.'}</p>
+            <p className="text-lg">Ganó <b>{published.name}</b> con el número <b>{num}</b>. Ya le apareció el aviso en la app{published.phone ? ' y podés escribirle ahora:' : '.'}</p>
             {published.phone && (
               <div className="flex flex-wrap gap-3">
                 <a href={waHref(published.phone, text)} target="_blank" rel="noreferrer" className="rounded-2xl bg-free px-5 py-3 font-bold text-white">Avisarle por WhatsApp</a>
@@ -155,10 +160,11 @@ function ResultCard({ raffles, onPublished }: { raffles: Row[]; onPublished: () 
             )}
           </div>
         ) : published.outcome === 'siguiente_sorteo' ? (
-          <p className="text-lg">Salió el {published.winning_number} y nadie lo tenía. El sorteo sigue: cargá el nuevo día en "Cargar día del sorteo".</p>
+          <p className="text-lg">Salió el {num} y nadie lo tenía. El sorteo sigue: cargá el nuevo día en "Cargar día del sorteo".</p>
         ) : (
-          <p className="text-lg">Salió el {published.winning_number} y nadie lo tenía: el sorteo quedó desierto.</p>
+          <p className="text-lg">Salió el {num} y nadie lo tenía: el sorteo quedó desierto.</p>
         )}
+        <ShareResult result={published} />
         <button onClick={() => setPublished(null)} className={`${ghostCls} mt-5`}>Listo</button>
       </Card>
     )
@@ -199,7 +205,7 @@ function ResultCard({ raffles, onPublished }: { raffles: Row[]; onPublished: () 
     if (error) return setMsg({ kind: 'error', text: explain(error.message) })
     const row = ((data ?? []) as { outcome: string; winning_number: number; name: string; phone: string }[])[0]
     setPreview(null)
-    setPublished({ ...row, label })
+    setPublished({ ...row, label, digits: raffle.digits, raffleTitle: raffleLabel(raffle), when: when(raffle), slot: raffle.official_draw_slot!, firstPrize: first })
     void sendPendingPush()
     onPublished()
   }
@@ -252,6 +258,50 @@ function ResultCard({ raffles, onPublished }: { raffles: Row[]; onPublished: () 
         </div>
       </Card>
       <QuinielaBoard live={live} digits={raffle.digits} />
+    </div>
+  )
+}
+
+// Nombre como lo muestra Resultados: "Beto González" -> "Beto G." (el teléfono nunca va al grupo).
+const shortName = (full: string) => {
+  const [a = '', b = ''] = full.trim().split(/\s+/)
+  return b ? `${a} ${b[0]}.` : a
+}
+
+function resultMessage(r: Published, appUrl: string) {
+  const num = pad(r.winning_number, r.digits)
+  const lines = [
+    `🎉 Resultado: ${r.raffleTitle}`,
+    `Premio: ${r.label}`,
+    `Quiniela de la Ciudad, ${slotLabels[r.slot].split(' · ')[0].toLowerCase()} del ${r.when}. 1.er premio: ${r.firstPrize}.`,
+  ]
+  if (r.outcome === 'ganador') lines.push(`Número ganador: ${num}. Ganó ${shortName(r.name).replace(/\.$/, "")}. ¡Felicitaciones! El premio se le entrega a la persona ganadora.`)
+  else if (r.outcome === 'siguiente_sorteo') lines.push(`Salió el ${num} y nadie lo tenía, así que el sorteo pasa a la próxima Quiniela. Les aviso el nuevo día.`)
+  else lines.push(`Salió el ${num} y nadie lo tenía: el sorteo quedó desierto.`)
+  lines.push('', `Ver el resultado: ${appUrl}/#/resultados`)
+  return lines.join('\n')
+}
+
+function ShareResult({ result }: { result: Published }) {
+  const text = resultMessage(result, window.location.origin)
+  const [copied, setCopied] = useState(false)
+  const share = async () => {
+    if (navigator.share) {
+      try { await navigator.share({ text }); return } catch { return /* la persona cerró el menú */ }
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
+  }
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); setCopied(true) } catch { setCopied(false) }
+  }
+  return (
+    <div className="mt-6 space-y-3 rounded-2xl border border-line p-4">
+      <p className="text-base font-semibold">Contale al grupo</p>
+      <p className="whitespace-pre-line rounded-xl bg-brand-50 p-3 text-sm">{text}</p>
+      <div className="flex flex-wrap gap-3">
+        <button onClick={share} className="rounded-2xl bg-free px-5 py-3 font-bold text-white">Compartir resultado en el grupo</button>
+        <button onClick={copy} className={ghostCls}>{copied ? 'Copiado ✓' : 'Copiar mensaje'}</button>
+      </div>
     </div>
   )
 }
