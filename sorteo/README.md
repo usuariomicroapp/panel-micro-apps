@@ -2,7 +2,7 @@
 
 Aplicación web instalable (PWA) para sorteos con resultados de la Quiniela de la Ciudad.
 
-**Estado:** Etapa 2 (diseño y navegación) terminada; Etapa 3 con la base de datos lista en `supabase/`, falta conectarla a una cuenta de Supabase. Modo demostración: los datos son de ejemplo, no hay base de datos, no se venden números ni se aceptan pagos.
+**Estado:** versión inicial (etapas 1 a 12). Sorteos sin cobros: cada persona elige su número; el ganador sale de las últimas cifras del 1.er premio de la Quiniela de la Ciudad.
 
 Plan completo (Etapa 1): https://claude.ai/artifact/SMxVzs8ao7PiKCnkVQyDH3
 
@@ -34,4 +34,20 @@ npm run build   # compila en sorteo/dist
 - Comando de compilación: `npm run build`
 - Directorio de salida: `dist`
 
-No requiere tarjeta ni variables de entorno en esta etapa.
+Variables (para la copia de cada cliente; sin ellas usa las de la app de Sebastián):
+
+| Variable | Tipo | Uso |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL`, `SUPABASE_URL` | Texto | URL del proyecto de Supabase |
+| `VITE_SUPABASE_ANON_KEY`, `SUPABASE_KEY` | Texto | Clave *publishable* (pública) |
+| `VITE_VAPID_PUBLIC_KEY`, `VAPID_PUBLIC_KEY` | Texto | Clave pública de avisos push |
+| `VAPID_PRIVATE_KEY` | Secret | Clave privada de avisos push (solo en Cloudflare) |
+
+Nunca usar la clave *secret* / *service_role* de Supabase: la app no la necesita.
+
+## Base de datos
+
+- Copia nueva: pegar `supabase/para-pegar/base-completa-cliente-nuevo.sql` en el SQL Editor.
+- Migraciones en orden en `supabase/migrations/`; pruebas en `supabase/tests/` (Postgres 16 local con `supabase_shim.sql`).
+- Funciones de Cloudflare: `functions/api/quiniela.js` (Quiniela en vivo), `functions/api/push.js` (avisos), `functions/manifest.webmanifest.js`.
+- `.github/workflows/sorteo-despertador.yml` consulta la base una vez por día para que Supabase gratis no la pause.
