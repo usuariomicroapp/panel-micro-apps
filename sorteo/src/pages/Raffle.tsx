@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import NumberGrid, { GridLegend } from '../components/NumberGrid'
 import RaffleImage from '../components/RaffleImage'
 import ComingSoon from '../components/ComingSoon'
+import HowToPay from '../components/HowToPay'
 import { fecha, pad, pesos } from '../lib/format'
 import { countView, usePublicRaffle } from '../lib/publicRaffles'
 
@@ -113,6 +114,7 @@ export default function Raffle() {
             <span className="text-sm text-muted">{chosen.length} × {pesos(raffle.pricePerNumber)}</span>
             <span className="text-2xl font-extrabold">{pesos(total)}</span>
           </div>
+          {chosen.length > 0 && open && !raffle.id.startsWith('ejemplo-') && <HowToPay total={total} isDemo={raffle.isDemo} />}
           <button disabled className="mt-4 w-full cursor-not-allowed rounded-2xl bg-brand-600/40 py-3.5 font-bold text-white">Reservar números</button>
           <div className="mt-3">
             <ComingSoon stage={6}>{open ? "Las reservas se activan en la próxima etapa. Hoy solo se calcula el total." : "Este sorteo ya no recibe reservas."}</ComingSoon>

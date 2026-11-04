@@ -6,7 +6,7 @@ import { countView, usePublicRaffles } from '../lib/publicRaffles'
 
 export default function Home() {
   const { loading, error, data } = usePublicRaffles()
-  const { profile } = useAuth()
+  const { isAdmin } = useAuth()
   return (
     <div>
       <section className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 to-brand-600 p-6 text-white md:p-10">
@@ -21,7 +21,7 @@ export default function Home() {
         <div className="rounded-3xl border border-dashed border-line bg-surface p-10 text-center">
           <h2 className="text-lg font-bold">Todavía no hay sorteos publicados</h2>
           <p className="mt-1 text-sm text-muted">Cuando se publique uno, lo vas a ver acá.</p>
-          {profile?.role === 'admin' && (
+          {isAdmin && (
             <Link to="/admin?tab=sorteos" className="mt-5 inline-block rounded-2xl bg-brand-600 px-5 py-3 font-bold text-white">Crear un sorteo</Link>
           )}
         </div>

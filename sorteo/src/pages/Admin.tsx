@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
 import { useAuth } from '../lib/auth'
 import { isConfigured } from '../lib/supabase'
@@ -9,14 +9,15 @@ import History from './admin/History'
 import Products from './admin/Products'
 import Raffles from './admin/Raffles'
 import ManualSales from './admin/ManualSales'
+import Owner from './admin/Owner'
 
-const tabs = [
+const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'sorteos', label: 'Sorteos' },
   { id: 'ventas', label: 'Ventas en persona' },
   { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
-  { id: 'pagos', label: 'Medios de pago' },
+  { id: 'pagos', label: 'Datos para cobrar (CBU)' },
   { id: 'historial', label: 'Historial' },
 ] as const
 
@@ -26,15 +27,25 @@ const upcoming = [
 ]
 
 export default function Admin() {
-  const { ready, profile } = useAuth()
+  const { ready, canManage, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') ?? 'resumen'
+  const tabs = isOwner ? [{ id: 'dueno', label: 'Mi panel de dueño' }, ...baseTabs] : baseTabs
+  const tab = params.get('tab') ?? (isOwner ? 'dueno' : 'resumen')
 
   if (!isConfigured) {
     return <ComingSoon stage={3}>El panel se activa cuando la app está conectada a la base de datos.</ComingSoon>
   }
   if (!ready) return <p className="py-20 text-center text-muted">Cargando…</p>
-  if (profile?.role !== 'admin') {
+  if (canManage && viewAsBuyer) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <p className="text-muted">Estás viendo la app como comprador.</p>
+        <button onClick={() => setViewAsBuyer(false)} className="mt-6 rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white">Volver a mi panel</button>
+      </div>
+    )
+  }
+  if (!canManage) {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
         <h1 className="text-xl font-extrabold">Panel privado</h1>
@@ -48,7 +59,12 @@ export default function Admin() {
     <div className="space-y-6">
       <div>
         <p className="text-sm font-semibold text-brand-600">Panel privado</p>
-        <h1 className="text-2xl font-extrabold">Administración</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold">{isOwner ? 'Administración (dueño)' : 'Administración'}</h1>
+          <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-brand-700">
+            Ver como comprador
+          </button>
+        </div>
       </div>
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {tabs.map((t) => (
@@ -74,6 +90,7 @@ export default function Admin() {
           </div>
         </>
       )}
+      {tab === 'dueno' && isOwner && <Owner />}
       {tab === 'sorteos' && <Raffles />}
       {tab === 'ventas' && <ManualSales />}
       {tab === 'productos' && <Products />}

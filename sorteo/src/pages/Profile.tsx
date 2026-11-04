@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import PaymentMethods from './admin/PaymentMethods'
 import ComingSoon from '../components/ComingSoon'
 import { useAuth } from '../lib/auth'
 import { isConfigured, supabase } from '../lib/supabase'
@@ -107,7 +109,8 @@ function ProfileCard() {
           <h2 className="font-bold">{profile.first_name || 'Tu cuenta'} {profile.last_name}</h2>
           <p className="text-sm text-muted">{profile.email}</p>
         </div>
-        {profile.role === 'admin' && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">Admin</span>}
+        {profile.is_owner ? <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Dueño</span>
+          : profile.role === 'admin' && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">Organizador</span>}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">Nombre<input name="first_name" defaultValue={profile.first_name} maxLength={80} className={input} /></label>
@@ -124,8 +127,27 @@ function ProfileCard() {
   )
 }
 
+// Para el organizador: acceso al panel, ver como comprador y sus datos para cobrar.
+function ManagerTools() {
+  const { setViewAsBuyer } = useAuth()
+  const navigate = useNavigate()
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Link to="/admin" className="rounded-2xl bg-ink py-3.5 text-center font-bold text-white">Ir a mi panel</Link>
+        <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-2xl border border-line py-3.5 font-semibold text-brand-700">Ver como comprador</button>
+      </div>
+      <div>
+        <h2 className="mb-1 text-lg font-bold">Tus datos para cobrar</h2>
+        <p className="mb-3 text-sm text-muted">Cargá tu CBU o CVU, alias y titular. Cuando un comprador elige números, le aparecen estos datos con el monto a transferir.</p>
+        <PaymentMethods />
+      </div>
+    </div>
+  )
+}
+
 export default function Profile() {
-  const { ready, session } = useAuth()
+  const { ready, session, isAdmin } = useAuth()
   return (
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="text-2xl font-extrabold">Mi perfil</h1>
@@ -134,15 +156,18 @@ export default function Profile() {
       ) : !ready ? (
         <p className="text-muted">Cargando…</p>
       ) : session ? (
-        <ProfileCard />
+        <>
+          <ProfileCard />
+          {isAdmin && <ManagerTools />}
+        </>
       ) : (
         <AuthForm />
       )}
-      <div className="grid grid-cols-2 gap-3">
+      {!isAdmin && <div className="grid grid-cols-2 gap-3">
         {sections.map((s) => (
           <div key={s} className="rounded-2xl border border-line bg-surface p-4 text-sm font-semibold text-muted">{s}<span className="mt-1 block text-xs font-normal">Disponible en Etapa 6–8</span></div>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
