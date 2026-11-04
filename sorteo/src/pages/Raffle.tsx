@@ -60,7 +60,18 @@ export default function Raffle() {
     if (!supabase || !session || !id) return
     supabase.from('reservations').select('numbers').eq('raffle_id', id).eq('user_id', session.user.id).eq('status', 'approved')
       .then(({ data }) => setMine(new Set(((data ?? []) as { numbers: number[] }[]).flatMap((r) => r.numbers))))
-  }, [id, session, raffle?.states])
+  }, [id, session])
+
+  // Si alguien eligió un número que yo tenía marcado (se actualiza cada 10 segundos), lo saco.
+  const states = raffle?.states
+  useEffect(() => {
+    if (!states) return
+    setSelected((prev) => {
+      const next = new Set([...prev].filter((n) => (states[n] ?? 'available') === 'available'))
+      if (next.size !== prev.size) setSearchMsg('Alguien acaba de elegir uno de los números que marcaste. Elegí otro.')
+      return next.size === prev.size ? prev : next
+    })
+  }, [states])
 
   if (loading) return <p className="py-20 text-center text-muted">Cargando sorteo…</p>
   if (error) return <p className="py-20 text-center text-red-700">{error} <Link to="/" className="font-semibold text-brand-600">Volver</Link></p>

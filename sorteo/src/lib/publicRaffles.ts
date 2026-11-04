@@ -128,5 +128,17 @@ export function usePublicRaffle(id?: string): Load<RaffleView | null> & { reload
       alive = false
     }
   }, [id, tick, demo])
+  // Cada 10 segundos se actualizan solo los números (elegidos y libres), sin recargar fotos.
+  useEffect(() => {
+    if (!supabase || !id || demo || !/^[0-9a-f-]{36}$/i.test(id)) return
+    const t = window.setInterval(async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const states = await loadNumberStates(id)
+        setState((s) => (s.data ? { ...s, data: { ...s.data, states } } : s))
+      } catch { /* sin señal: se reintenta */ }
+    }, 10_000)
+    return () => window.clearInterval(t)
+  }, [id, demo])
   return { ...state, reload: () => setTick((t) => t + 1) }
 }
