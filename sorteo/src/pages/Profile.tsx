@@ -123,6 +123,8 @@ function ProfileCard() {
   const { profile, refreshProfile } = useAuth()
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
+  // Abierta solo si faltan datos para poder elegir números.
+  const [open, setOpen] = useState(() => !!profile && (!profile.first_name?.trim() || !profile.phone?.trim()))
   if (!profile) return <p className="text-muted">Cargando tu perfil…</p>
 
   const save = async (e: FormEvent<HTMLFormElement>) => {
@@ -136,31 +138,38 @@ function ProfileCard() {
       phone: String(f.get('phone')).trim(),
     }).eq('id', profile.id)
     await refreshProfile()
-    setBusy(false); setSaved(true)
+    setBusy(false); setSaved(true); setOpen(false)
+    setTimeout(() => setSaved(false), 4000)
   }
 
+  const initial = (profile.first_name || profile.email || '?').trim().charAt(0).toUpperCase()
   return (
-    <form onSubmit={save} className="space-y-3 card rounded-3xl p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-bold">{profile.first_name || 'Tu cuenta'} {profile.last_name}</h2>
-          <p className="text-sm text-muted">{profile.email}</p>
-        </div>
+    <section className="card rounded-3xl">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-3 p-4 text-left">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-night font-display text-xl font-bold text-[#f6e0a4]">{initial}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-bold">{`${profile.first_name} ${profile.last_name}`.trim() || 'Tu cuenta'}</span>
+          <span className={`block truncate text-sm ${saved ? 'font-semibold text-free' : 'text-muted'}`}>{saved ? '✓ Datos guardados' : open ? profile.email : 'Mis datos · tocá para cambiarlos'}</span>
+        </span>
         {profile.is_owner ? <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-night">Dueño</span>
           : profile.role === 'admin' && <span className="rounded-full bg-night px-2.5 py-0.5 text-xs font-bold text-white">Organizador</span>}
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <label className="block text-sm">Nombre<input name="first_name" defaultValue={profile.first_name} maxLength={80} className={input} /></label>
-        <label className="block text-sm">Apellido<input name="last_name" defaultValue={profile.last_name} maxLength={80} className={input} /></label>
-        <label className="col-span-2 block text-sm">Teléfono<input name="phone" type="tel" defaultValue={profile.phone} inputMode="tel" className={input} /></label>
-      </div>
-      <p className="text-xs text-muted">Registrado el {new Date(profile.created_at).toLocaleDateString('es-AR')}</p>
-      {saved && <p role="status" className="text-sm text-free">Datos guardados.</p>}
-      <div className="flex gap-3">
-        <button disabled={busy} className={primary}>Guardar</button>
-        <button type="button" onClick={() => supabase?.auth.signOut()} className="w-full rounded-2xl border border-line py-3.5 font-semibold text-muted">Cerrar sesión</button>
-      </div>
-    </form>
+        <svg viewBox="0 0 24 24" aria-hidden="true" className={`h-6 w-6 shrink-0 text-gold-dark transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <form onSubmit={save} className="space-y-3 px-5 pb-5">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">Nombre<input name="first_name" defaultValue={profile.first_name} maxLength={80} className={input} /></label>
+            <label className="block text-sm">Apellido<input name="last_name" defaultValue={profile.last_name} maxLength={80} className={input} /></label>
+            <label className="col-span-2 block text-sm">Teléfono<input name="phone" type="tel" defaultValue={profile.phone} inputMode="tel" className={input} /></label>
+          </div>
+          <p className="text-xs text-muted">Registrado el {new Date(profile.created_at).toLocaleDateString('es-AR')}</p>
+          <div className="flex gap-3">
+            <button disabled={busy} className={primary}>{busy ? 'Guardando…' : 'Guardar'}</button>
+            <button type="button" onClick={() => supabase?.auth.signOut()} className="w-full rounded-2xl border border-line py-3.5 font-semibold text-muted">Cerrar sesión</button>
+          </div>
+        </form>
+      )}
+    </section>
   )
 }
 
