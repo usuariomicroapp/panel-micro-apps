@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useBrand } from '../lib/brand'
 import { usePublicRaffles, type RaffleView } from '../lib/publicRaffles'
 import { useQuiniela } from '../lib/quiniela'
 import QuinielaBoard from '../components/QuinielaBoard'
@@ -10,6 +11,7 @@ import Balls from '../components/Balls'
 import Icon from '../components/Icon'
 
 interface Result {
+  organizer_id?: string | null
   raffle_id: string
   raffle_no: number | null
   raffle_name: string
@@ -27,11 +29,12 @@ interface Result {
 // Quiniela en vivo para los sorteos de hoy, y los resultados ya publicados.
 export default function Results() {
   const { data: raffles } = usePublicRaffles()
+  const { org } = useBrand()
   const [results, setResults] = useState<Result[] | null>(null)
   useEffect(() => {
     if (!supabase) return setResults([])
-    supabase.rpc('public_results').then(({ data }) => setResults((data ?? []) as Result[]))
-  }, [])
+    supabase.rpc('public_results').then(({ data }) => setResults(((data ?? []) as Result[]).filter((r) => !org || !r.organizer_id || r.organizer_id === org)))
+  }, [org])
 
   const today = dateAR()
   const todays = raffles.filter((r) => !r.isDemo && r.status === 'active' && r.drawDate === today && r.drawSlot)

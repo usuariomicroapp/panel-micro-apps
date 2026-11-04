@@ -5,6 +5,18 @@ import { BrandMark } from '../../components/Logo'
 import { useBrand } from '../../lib/brand'
 import { compressImage } from '../../lib/data'
 
+type Brand = ReturnType<typeof useBrand>
+// Cada organizador guarda en su propia marca. Sin marca propia (base vieja), en la general.
+const saveBrand = (brand: Brand, update: Record<string, unknown>) => brand.org
+  ? supabase!.from('organizer_settings').update(update).eq('organizer_id', brand.org)
+  : supabase!.from('settings').update(update).eq('id', 1)
+const currentLogo = async (brand: Brand) => {
+  const { data } = brand.org
+    ? await supabase!.from('organizer_settings').select('brand_logo_path').eq('organizer_id', brand.org).maybeSingle()
+    : await supabase!.from('settings').select('brand_logo_path').eq('id', 1).maybeSingle()
+  return (data as { brand_logo_path?: string | null } | null)?.brand_logo_path ?? null
+}
+
 // Nombre del emprendimiento y logo que ven los participantes.
 function BrandSettings() {
   const brand = useBrand()
@@ -18,7 +30,7 @@ function BrandSettings() {
   const saveName = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true); setMsg(null)
-    const { error } = await supabase!.from('settings').update({ brand_name: name.trim() || 'SORTEO', updated_at: new Date().toISOString() }).eq('id', 1)
+    const { error } = await saveBrand(brand, { brand_name: name.trim() || 'SORTEO', updated_at: new Date().toISOString() })
     setBusy(false)
     if (error) setMsg({ kind: 'error', text: missingColumns(error.message) })
     else { brand.refresh(); setMsg({ kind: 'ok', text: 'Nombre guardado.' }) }
@@ -29,13 +41,12 @@ function BrandSettings() {
     setBusy(true); setMsg(null)
     try {
       const blob = await compressImage(file, 512, 0.9)
-      const path = `marca/logo-${crypto.randomUUID()}.jpg`
+      const path = brand.org ? `marca/${brand.org}/logo-${crypto.randomUUID()}.jpg` : `marca/logo-${crypto.randomUUID()}.jpg`
       const up = await supabase!.storage.from('product-photos').upload(path, blob, { contentType: 'image/jpeg' })
       if (up.error) throw new Error(up.error.message)
-      const { data: old } = await supabase!.from('settings').select('*').eq('id', 1).single()
-      const { error } = await supabase!.from('settings').update({ brand_logo_path: path, updated_at: new Date().toISOString() }).eq('id', 1)
+      const prev = await currentLogo(brand)
+      const { error } = await saveBrand(brand, { brand_logo_path: path, updated_at: new Date().toISOString() })
       if (error) throw new Error(missingColumns(error.message))
-      const prev = (old as { brand_logo_path?: string | null } | null)?.brand_logo_path
       if (prev) await supabase!.storage.from('product-photos').remove([prev])
       brand.refresh(); setMsg({ kind: 'ok', text: 'Logo actualizado.' })
     } catch (e) {
@@ -46,9 +57,8 @@ function BrandSettings() {
 
   const removeLogo = async () => {
     setBusy(true); setMsg(null)
-    const { data: old } = await supabase!.from('settings').select('*').eq('id', 1).single()
-    const { error } = await supabase!.from('settings').update({ brand_logo_path: null }).eq('id', 1)
-    const prev = (old as { brand_logo_path?: string | null } | null)?.brand_logo_path
+    const prev = await currentLogo(brand)
+    const { error } = await saveBrand(brand, { brand_logo_path: null })
     if (!error && prev) await supabase!.storage.from('product-photos').remove([prev])
     setBusy(false)
     if (error) setMsg({ kind: 'error', text: missingColumns(error.message) })
@@ -88,15 +98,12 @@ interface SettingsRow {
 }
 
 export default function Settings() {
-  const [row, setRow] = useState<SettingsRow | null>(null)
+  const brand = useBrand()
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const row: SettingsRow = { group_link: brand.groupLink, install_link: brand.installLink, share_message: brand.shareMessage }
+  const setRow = () => brand.refresh()
 
-  useEffect(() => {
-    supabase!.from('settings').select('*').eq('id', 1).single().then(({ data }) => setRow(data as SettingsRow))
-  }, [])
-
-  if (!row) return <Card title="Configuración"><p className="text-muted">Cargando…</p></Card>
   return (
     <div className="space-y-6">
       <BrandSettings />
@@ -107,12 +114,13 @@ export default function Settings() {
 
 function GeneralSettings({ row, setRow, msg, setMsg, busy, setBusy }: {
   row: SettingsRow
-  setRow: (r: SettingsRow) => void
+  setRow: () => void
   msg: { kind: 'ok' | 'error'; text: string } | null
   setMsg: (m: { kind: 'ok' | 'error'; text: string } | null) => void
   busy: boolean
   setBusy: (b: boolean) => void
 }) {
+  const brand = useBrand()
 
   const save = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -124,20 +132,20 @@ function GeneralSettings({ row, setRow, msg, setMsg, busy, setBusy }: {
       updated_at: new Date().toISOString(),
     }
     setBusy(true); setMsg(null)
-    const { error } = await supabase!.from('settings').update(update).eq('id', 1)
+    const { error } = await saveBrand(brand, update)
     setBusy(false)
     if (error) setMsg({ kind: 'error', text: /check/i.test(error.message) ? 'Revisá los datos: los enlaces deben empezar con https://.' : error.message })
-    else { setRow({ ...row, ...update }); setMsg({ kind: 'ok', text: 'Configuración guardada.' }) }
+    else { setRow(); setMsg({ kind: 'ok', text: 'Configuración guardada.' }) }
   }
 
   return (
     <Card title="Configuración" collapsible hint="Mensajes y opciones de la app">
-      <form onSubmit={save} className="space-y-4">
+      <form key={`${row.group_link}|${row.install_link}|${row.share_message.length}`} onSubmit={save} className="space-y-4">
         <label className="block text-sm font-medium">Enlace del grupo de WhatsApp
           <input name="group_link" type="url" defaultValue={row.group_link} placeholder="https://chat.whatsapp.com/..." className={inputCls} />
         </label>
         <label className="block text-sm font-medium">Enlace de instalación de la app
-          <input name="install_link" type="url" defaultValue={row.install_link || window.location.origin} placeholder="https://sorteo-5yd.pages.dev" className={inputCls} />
+          <input name="install_link" type="url" defaultValue={row.install_link} placeholder="Vacío = el link de tus sorteos" className={inputCls} />
         </label>
         <label className="block text-sm font-medium">Mensaje para compartir
           <textarea name="share_message" rows={8} defaultValue={row.share_message} className={inputCls} />

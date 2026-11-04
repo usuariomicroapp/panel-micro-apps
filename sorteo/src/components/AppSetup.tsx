@@ -13,22 +13,21 @@ function ShareIcon() {
 }
 
 // Instalar la app en el celular. En iPhone se explica a mano porque Safari no tiene botón.
-export function InstallCard({ compact = false }: { compact?: boolean }) {
+export function InstallCard(_: { compact?: boolean }) {
   const { installed, canPrompt, ios, prompt } = useInstall()
+  const [steps, setSteps] = useState(false)
   if (installed || (!canPrompt && !ios)) return null
   return (
-    <section className="rounded-3xl border-2 border-brand-200 bg-brand-50 p-5">
-      <div className="flex items-center gap-4">
-        <img src="/icon-192.png" alt="" className="h-14 w-14 rounded-2xl" />
-        <div>
-          <h2 className="text-lg font-bold">Instalá la app en tu celular</h2>
-          {!compact && <p className="text-base text-muted">Queda como un ícono en la pantalla y te avisa si ganás.</p>}
-        </div>
+    <section className="card rounded-2xl px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <img src="/icon-192.png" alt="" className="h-9 w-9 rounded-xl" />
+        <p className="min-w-0 flex-1 text-sm font-bold leading-tight">Instalá la app<span className="block font-normal text-muted">Te avisa si ganás</span></p>
+        {canPrompt
+          ? <button onClick={prompt} className="btn-gold shrink-0 rounded-xl px-4 py-2 text-sm font-extrabold">Instalar</button>
+          : <button onClick={() => setSteps(!steps)} className="btn-gold shrink-0 rounded-xl px-4 py-2 text-sm font-extrabold">{steps ? 'Cerrar' : 'Cómo'}</button>}
       </div>
-      {canPrompt ? (
-        <button onClick={prompt} className={`${btn} mt-4 w-full`}>Instalar app</button>
-      ) : (
-        <ol className="mt-4 list-decimal space-y-2 pl-6 text-base">
+      {steps && (
+        <ol className="mt-3 list-decimal space-y-1.5 pl-6 text-sm">
           <li>Abrí esta página con <b>Safari</b>.</li>
           <li>Tocá el botón <b>Compartir</b> <ShareIcon /> (abajo en el medio).</li>
           <li>Elegí <b>“Agregar a inicio”</b> y después <b>“Agregar”</b>.</li>
@@ -62,7 +61,7 @@ export function PushCard() {
           <button onClick={turnOn} disabled={busy} className={`${btn} mt-4 w-full`}>{busy ? 'Activando…' : 'Activar avisos'}</button>
         </>
       )}
-      {state === 'needs-install' && <p className="mt-2 text-base">En iPhone, los avisos funcionan cuando la app está instalada. Instalala con los pasos de arriba y abrila desde el ícono.</p>}
+      {state === 'needs-install' && <p className="mt-2 text-base">En iPhone, los avisos funcionan cuando la app está instalada. Instalala (tocá «Cómo» arriba) y abrila desde el ícono.</p>}
       {state === 'denied' && <p className="mt-2 text-base">Los avisos están bloqueados. Para activarlos: Ajustes del celular → Notificaciones → buscá esta app (o el navegador) → Permitir.</p>}
       {error && <p className="mt-2 text-base text-sold">{error}</p>}
     </section>

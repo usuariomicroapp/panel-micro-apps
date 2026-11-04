@@ -34,11 +34,11 @@ window.addEventListener('hashchange', reloadOnToken)
 const render = () => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HashRouter>
-      <BrandProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <BrandProvider>
           <App />
-        </AuthProvider>
-      </BrandProvider>
+        </BrandProvider>
+      </AuthProvider>
     </HashRouter>
   </StrictMode>,
 )

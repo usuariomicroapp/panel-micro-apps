@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import { Card, Notice, inputCls, primaryCls } from '../../components/ui'
 import NumberGrid, { GridLegend } from '../../components/NumberGrid'
@@ -30,11 +31,12 @@ export default function Participants() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [entries, setEntries] = useState<Entry[]>([])
   const [q, setQ] = useState('')
+  const [openKey, setOpenKey] = useState('')
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    supabase!.from('raffles').select('*').in('status', ['active', 'closed', 'drawn']).order('closes_at').then(({ data }) => {
+    void myId().then((me) => supabase!.from('raffles').select('*').eq('organizer_id', me).in('status', ['active', 'closed', 'drawn']).order('closes_at')).then(({ data }) => {
       const list = (data ?? []) as Raffle[]
       setRaffles(list)
       if (list.length) setRaffleId(list[0].id)
@@ -115,7 +117,19 @@ export default function Participants() {
     rows.sort((a, b) => (a[0] === 'Número' ? -1 : b[0] === 'Número' ? 1 : String(a[0]).localeCompare(String(b[0]))))
     downloadFile(`participantes-${(raffle?.name ?? 'sorteo').replace(/[^\w-]+/g, '-')}.csv`, toCsv(rows), 'text/csv;charset=utf-8')
   }
-  const shown = entries.filter((en) => !filter || `${en.buyer_name} ${en.buyer_phone} ${en.numbers.map((n) => pad(n, digits)).join(' ')}`.toLowerCase().includes(filter.toLowerCase()))
+  // Una fila por persona: mismo nombre y teléfono (o la misma cuenta) juntan sus números.
+  const groups = new Map<string, { key: string; name: string; phone: string; entries: Entry[] }>()
+  for (const en of entries) {
+    const name = en.buyer_name?.trim() || 'Sin nombre'
+    const phone = en.buyer_phone?.trim() || ''
+    const key = `${name.toLowerCase()}|${phone.replace(/\D/g, '')}`
+    const g = groups.get(key) ?? { key, name, phone, entries: [] }
+    g.entries.push(en); groups.set(key, g)
+  }
+  const people = [...groups.values()].sort((x, y) => x.name.localeCompare(y.name, 'es'))
+  const takenCount = Object.values(states).filter((st) => st !== 'available').length
+  const freeCount = Math.max(0, (raffle?.total_numbers ?? 0) - takenCount)
+  const shown = people.filter((p) => !filter || `${p.name} ${p.phone} ${p.entries.flatMap((en) => en.numbers).map((n) => pad(n, digits)).join(' ')}`.toLowerCase().includes(filter.toLowerCase()))
 
   return (
     <div className="space-y-6">
@@ -125,32 +139,55 @@ export default function Participants() {
         </select>
       </label>
 
-      <Card title={`Quién tiene cada número (${entries.reduce((a, en) => a + en.numbers.length, 0)} elegidos)`}>
+      <div className="grid grid-cols-3 gap-2">
+        <Count label="Elegidos" value={takenCount} cls="text-mine" />
+        <Count label="Libres" value={freeCount} cls="text-free" />
+        <Count label="Personas" value={people.length} cls="text-gold-dark" />
+      </div>
+
+      <Card title="Participantes">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, teléfono o número" className={inputCls} />
-        {entries.length > 0 && (
-          <button onClick={exportCsv} className="mt-3 rounded-xl border border-line px-4 py-2 text-sm font-semibold">Descargar lista (Excel)</button>
-        )}
         {shown.length === 0 ? <p className="mt-3 text-sm text-muted">{entries.length ? 'No hay coincidencias.' : 'Todavía nadie eligió números en este sorteo.'}</p> : (
-          <ul className="mt-3 divide-y divide-line">
-            {shown.map((en) => (
-              <li key={en.id} className="flex flex-wrap items-start justify-between gap-3 py-3 text-sm">
-                <div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {en.numbers.map((n) => <span key={n} className="rounded-lg bg-mine px-2 py-0.5 font-bold tabular-nums text-white">{pad(n, digits)}</span>)}
-                  </div>
-                  <p className="mt-1.5 font-semibold">{en.buyer_name ?? 'Sin nombre'}</p>
-                  {en.buyer_phone && (
-                    <p className="flex gap-3">
-                      <a href={phoneHref(en.buyer_phone)} className="text-brand-600">{en.buyer_phone}</a>
-                      <a href={waHref(en.buyer_phone)} target="_blank" rel="noreferrer" className="font-semibold text-free">WhatsApp</a>
-                    </p>
+          <ul className="mt-3 space-y-2">
+            {shown.map((p) => {
+              const isOpen = openKey === p.key || !!filter
+              const nums = p.entries.flatMap((en) => en.numbers).sort((x, y) => x - y)
+              return (
+                <li key={p.key} className="rounded-2xl border border-line">
+                  <button type="button" onClick={() => setOpenKey(isOpen && !filter ? '' : p.key)} aria-expanded={isOpen} className="flex w-full items-center gap-3 p-3 text-left">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-mine font-bold text-white">{nums.length}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-bold">{p.name}</span>
+                      <span className="block truncate text-sm text-muted">{p.phone || 'Sin teléfono'} · {nums.length === 1 ? '1 número' : `${nums.length} números`}</span>
+                    </span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className={`h-5 w-5 shrink-0 text-gold-dark transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                  </button>
+                  {isOpen && (
+                    <div className="space-y-3 border-t border-line p-3 text-sm">
+                      <div className="flex flex-wrap gap-1.5">
+                        {nums.map((n) => <span key={n} className="rounded-lg bg-mine px-2.5 py-1 font-bold tabular-nums text-white">{pad(n, digits)}</span>)}
+                      </div>
+                      {p.phone && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <a href={phoneHref(p.phone)} className="card rounded-xl py-2.5 text-center font-bold">Llamar</a>
+                          <a href={waHref(p.phone)} target="_blank" rel="noreferrer" className="btn-green rounded-xl py-2.5 text-center font-bold">WhatsApp</a>
+                        </div>
+                      )}
+                      {p.entries.map((en) => (
+                        <div key={en.id} className="flex items-start justify-between gap-3 text-xs text-muted">
+                          <span>{en.numbers.map((n) => pad(n, digits)).join(', ')} · {en.manual ? 'Anotado en persona' : 'Desde la app'} · {fecha(en.created_at)}{en.notes && <> · {en.notes}</>}</span>
+                          {raffle?.status !== 'drawn' && <button onClick={() => release(en)} className="shrink-0 font-semibold text-sold">Liberar</button>}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <p className="text-xs text-muted">{en.manual ? 'Anotado en persona' : 'Desde la app'} · {fecha(en.created_at)}{en.notes && <> · {en.notes}</>}</p>
-                </div>
-                {raffle?.status !== 'drawn' && <button onClick={() => release(en)} className="font-semibold text-sold">Liberar</button>}
-              </li>
-            ))}
+                </li>
+              )
+            })}
           </ul>
+        )}
+        {entries.length > 0 && (
+          <button onClick={exportCsv} className="mt-4 rounded-xl border border-line px-4 py-2 text-sm font-semibold">Descargar lista (Excel)</button>
         )}
       </Card>
 
@@ -182,6 +219,15 @@ export default function Participants() {
           </form>
         </Card>
       )}
+    </div>
+  )
+}
+
+function Count({ label, value, cls }: { label: string; value: number; cls: string }) {
+  return (
+    <div className="card rounded-2xl p-3 text-center">
+      <p className={`font-display text-2xl font-bold tabular-nums ${cls}`}>{value}</p>
+      <p className="label text-muted">{label}</p>
     </div>
   )
 }

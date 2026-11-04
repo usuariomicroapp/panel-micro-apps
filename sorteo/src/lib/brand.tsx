@@ -1,38 +1,92 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
+import { useAuth } from './auth'
 
-// Nombre del emprendimiento y logo, editables desde Panel → Configuración.
-interface Brand { name: string; logoUrl: string | null; paused: boolean; pausedMessage: string; refresh: () => void }
+// Marca que se ve: la del organizador del link (?o=código) o la del organizador conectado.
+// Sin organizador elegido se ve la marca general de la app y todos los sorteos.
+interface Brand {
+  name: string; logoUrl: string | null; paused: boolean; pausedMessage: string
+  org: string | null; code: string; groupLink: string; installLink: string; shareMessage: string
+  setOrg: (id: string | null) => void; refresh: () => void
+}
 
 const DEFAULT_NAME = 'SORTEO'
-const BrandContext = createContext<Brand>({ name: DEFAULT_NAME, logoUrl: null, paused: false, pausedMessage: '', refresh: () => {} })
+const ORG_KEY = 'sorteo-organizador'
+const BrandContext = createContext<Brand>({
+  name: DEFAULT_NAME, logoUrl: null, paused: false, pausedMessage: '', org: null, code: '', groupLink: '', installLink: '', shareMessage: '',
+  setOrg: () => {}, refresh: () => {},
+})
+
+const readStored = () => { try { return localStorage.getItem(ORG_KEY) } catch { return null } }
+const store = (id: string | null) => { try { if (id) localStorage.setItem(ORG_KEY, id); else localStorage.removeItem(ORG_KEY) } catch { /* sin almacenamiento */ } }
+// El código puede venir antes del # (https://app/?o=abc123) o dentro (https://app/#/?o=abc123).
+const codeInUrl = () => {
+  const q = new URLSearchParams(window.location.search).get('o') || new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('o')
+  return q && /^[a-z0-9]{4,20}$/i.test(q) ? q.toLowerCase() : null
+}
+const publicUrl = (path?: string | null) => (path ? supabase!.storage.from('product-photos').getPublicUrl(path).data.publicUrl : null)
+
+interface OrgRow { organizer_id: string; code: string; brand_name: string; brand_logo_path: string | null; group_link: string; install_link: string; share_message: string }
 
 export function BrandProvider({ children }: { children: ReactNode }) {
-  const [name, setName] = useState(DEFAULT_NAME)
-  const [logoUrl, setLogoUrl] = useState<string | null>(null)
-  const [paused, setPaused] = useState(false)
-  const [pausedMessage, setPausedMessage] = useState('')
+  const { profile, isOwner } = useAuth()
+  const [visited, setVisited] = useState<string | null>(readStored)
+  const [general, setGeneral] = useState({ name: DEFAULT_NAME, logoUrl: null as string | null, paused: false, pausedMessage: '', groupLink: '', installLink: '', shareMessage: '' })
+  const [orgRow, setOrgRow] = useState<OrgRow | null>(null)
+  const [tick, setTick] = useState(0)
 
-  const refresh = useCallback(() => {
+  // El organizador conectado siempre ve su propia marca.
+  const own = profile && profile.role === 'admin' && !isOwner ? profile.id : null
+  const org = own ?? visited
+
+  const setOrg = useCallback((id: string | null) => { store(id); setVisited(id) }, [])
+
+  // Link con código: se busca de qué organizador es y se recuerda.
+  useEffect(() => {
+    const code = codeInUrl()
+    if (!supabase || !code) return
+    supabase.from('organizer_settings').select('organizer_id').eq('code', code).maybeSingle()
+      .then(({ data }) => { if (data) setOrg((data as { organizer_id: string }).organizer_id) })
+  }, [setOrg])
+
+  useEffect(() => {
     if (!supabase) return
     supabase.from('settings').select('*').eq('id', 1).maybeSingle().then(({ data }) => {
-      const row = data as { brand_name?: string; brand_logo_path?: string | null; app_paused?: boolean; paused_message?: string } | null
-      setName(row?.brand_name?.trim() || DEFAULT_NAME)
-      setPaused(!!row?.app_paused)
-      setPausedMessage(row?.paused_message ?? '')
-      setLogoUrl(row?.brand_logo_path ? supabase!.storage.from('product-photos').getPublicUrl(row.brand_logo_path).data.publicUrl : null)
+      const row = data as { brand_name?: string; brand_logo_path?: string | null; app_paused?: boolean; paused_message?: string; group_link?: string; install_link?: string; share_message?: string } | null
+      setGeneral({
+        name: row?.brand_name?.trim() || DEFAULT_NAME, logoUrl: publicUrl(row?.brand_logo_path), paused: !!row?.app_paused, pausedMessage: row?.paused_message ?? '',
+        groupLink: row?.group_link ?? '', installLink: row?.install_link ?? '', shareMessage: row?.share_message ?? '',
+      })
     })
-  }, [])
+  }, [tick])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    if (!supabase || !org) return setOrgRow(null)
+    supabase.from('organizer_settings').select('*').eq('organizer_id', org).maybeSingle().then(({ data, error }) => {
+      // Si la base todavía no tiene marcas por organizador, se usa la general.
+      if (error || !data) { setOrgRow(null); if (!error && org === visited) setOrg(null); return }
+      setOrgRow(data as OrgRow)
+    })
+  }, [org, tick, visited, setOrg])
 
-  useEffect(() => {
-    document.title = name
-  }, [name])
+  const value: Brand = orgRow
+    ? {
+        ...general, name: orgRow.brand_name?.trim() || general.name, logoUrl: publicUrl(orgRow.brand_logo_path),
+        org: orgRow.organizer_id, code: orgRow.code, groupLink: orgRow.group_link, installLink: orgRow.install_link,
+        shareMessage: orgRow.share_message || general.shareMessage, setOrg, refresh: () => setTick((t) => t + 1),
+      }
+    : { ...general, org: null, code: '', setOrg, refresh: () => setTick((t) => t + 1) }
 
-  return <BrandContext.Provider value={{ name, logoUrl, paused, pausedMessage, refresh }}>{children}</BrandContext.Provider>
+  useEffect(() => { document.title = value.name }, [value.name])
+
+  return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>
 }
 
 export const useBrand = () => useContext(BrandContext)
+
+// Link para que los participantes entren directo a los sorteos de este organizador.
+export const orgLink = (b: Pick<Brand, 'code' | 'installLink'>) => {
+  const base = b.installLink || `${window.location.origin}/`
+  if (!b.code) return base
+  try { const u = new URL(base); u.searchParams.set('o', b.code); return u.toString() } catch { return `${window.location.origin}/?o=${b.code}` }
+}

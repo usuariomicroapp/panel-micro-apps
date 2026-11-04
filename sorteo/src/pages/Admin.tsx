@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
 import { useAuth } from '../lib/auth'
 import { isConfigured } from '../lib/supabase'
@@ -15,10 +15,10 @@ import ShareBox, { useInviteMessage } from '../components/ShareBox'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
+  { id: 'productos', label: 'Productos' },
   { id: 'sorteos', label: 'Sorteos' },
   { id: 'dia', label: 'Día del sorteo' },
   { id: 'participantes', label: 'Participantes' },
-  { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
   { id: 'historial', label: 'Historial' },
 ] as const
@@ -26,7 +26,6 @@ const baseTabs = [
 
 export default function Admin() {
   const { ready, canManage, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
-  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'resumen'
 
@@ -69,17 +68,12 @@ export default function Admin() {
     <div className="space-y-6">
       <div>
         <p className="label text-gold-dark">Panel del organizador</p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="font-display text-3xl font-bold">Administración</h1>
-          <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="card rounded-full px-4 py-2 text-sm font-bold">
-            Ver como participante
-          </button>
-        </div>
+        <h1 className="font-display text-3xl font-bold">Administración</h1>
       </div>
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 pt-1">
+      <nav className="flex flex-wrap gap-2">
         {baseTabs.map((t) => (
           <button key={t.id} onClick={() => setParams({ tab: t.id })}
-            className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-extrabold ${tab === t.id ? 'btn-gold' : 'card text-muted'}`}>
+            className={`rounded-full px-3.5 py-2 text-sm font-extrabold ${tab === t.id ? 'btn-gold' : 'card text-ink'}`}>
             {t.label}
           </button>
         ))}
