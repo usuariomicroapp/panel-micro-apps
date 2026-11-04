@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
 import { InstallCard, PushCard } from '../components/AppSetup'
-import { useAuth } from '../lib/auth'
+import { RECOVERY_KEY, useAuth } from '../lib/auth'
 import { isConfigured, supabase } from '../lib/supabase'
 
 const input = 'mt-1 w-full rounded-xl border border-line bg-surface px-4 py-3 outline-none focus:border-brand-500 disabled:bg-canvas'
@@ -22,6 +22,20 @@ function AuthForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Manda el correo para elegir una contraseña nueva.
+  const forgot = async () => {
+    if (!supabase) return
+    const email = String(new FormData(formRef.current!).get('email') ?? '').trim()
+    setError(''); setInfo('')
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Escribí tu correo arriba y tocá de nuevo "¿Olvidaste tu contraseña?".')
+    setBusy(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/' })
+    setBusy(false)
+    if (error) return setError(translate(error.message))
+    setInfo(`Te mandamos un correo a ${email}. Abrilo y tocá el enlace para elegir una contraseña nueva. Si no lo ves, revisá Spam.`)
+  }
 
   const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -56,7 +70,7 @@ function AuthForm() {
   }
 
   return (
-    <form className="space-y-3 card rounded-3xl p-6" onSubmit={submit}>
+    <form ref={formRef} className="space-y-3 card rounded-3xl p-6" onSubmit={submit}>
       <div className="grid grid-cols-2 rounded-2xl bg-canvas p-1 text-sm font-semibold">
         {(['login', 'signup'] as const).map((m) => (
           <button key={m} type="button" onClick={() => { setMode(m); setError(''); setInfo('') }}
@@ -77,7 +91,37 @@ function AuthForm() {
       {error && <p role="alert" className="rounded-xl bg-sold/10 p-3 text-sm text-sold">{error}</p>}
       {info && <p role="status" className="rounded-xl bg-free/10 p-3 text-sm text-free">{info}</p>}
       <button disabled={busy} className={primary}>{busy ? 'Un momento…' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}</button>
+      {mode === 'login' && <button type="button" onClick={forgot} disabled={busy} className="w-full py-2 text-base font-bold text-brand-700 underline underline-offset-4">¿Olvidaste tu contraseña?</button>}
       {mode === 'signup' && <p className="text-xs text-muted">Usamos tus datos solo para gestionar tus participaciones (Ley 25.326). Podés pedir que los borremos.</p>}
+    </form>
+  )
+}
+
+// Después de tocar el enlace del correo: elegir la contraseña nueva.
+function NewPasswordCard({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const save = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!supabase) return
+    const f = new FormData(e.currentTarget)
+    const a = String(f.get('password')), b = String(f.get('password2'))
+    if (a.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.')
+    if (a !== b) return setError('Las dos contraseñas no son iguales.')
+    setBusy(true); setError('')
+    const { error } = await supabase.auth.updateUser({ password: a })
+    setBusy(false)
+    if (error) return setError(translate(error.message))
+    try { sessionStorage.removeItem(RECOVERY_KEY) } catch { /* sin almacenamiento */ }
+    onDone()
+  }
+  return (
+    <form onSubmit={save} className="navycard space-y-3 rounded-3xl p-6">
+      <h2 className="font-display text-2xl font-bold">Elegí tu contraseña nueva</h2>
+      <label className="block text-sm text-white/80">Contraseña nueva<input name="password" type="password" required minLength={8} autoComplete="new-password" className={`${input} text-ink`} /></label>
+      <label className="block text-sm text-white/80">Repetila<input name="password2" type="password" required minLength={8} autoComplete="new-password" className={`${input} text-ink`} /></label>
+      {error && <p role="alert" className="rounded-xl bg-sold/25 p-3 text-sm text-white">{error}</p>}
+      <button disabled={busy} className={primary}>{busy ? 'Guardando…' : 'Guardar contraseña'}</button>
     </form>
   )
 }
@@ -143,6 +187,10 @@ function ManagerTools() {
 
 export default function Profile() {
   const { ready, session, isAdmin } = useAuth()
+  const [recovering, setRecovering] = useState(() => {
+    try { return sessionStorage.getItem(RECOVERY_KEY) === '1' } catch { return false }
+  })
+  const [changed, setChanged] = useState(false)
   return (
     <div className="mx-auto max-w-md space-y-6">
       <h1 className="text-2xl font-extrabold">Mi perfil</h1>
@@ -150,8 +198,11 @@ export default function Profile() {
         <ComingSoon stage={3}>El registro e ingreso se activan cuando se conecte la base de datos.</ComingSoon>
       ) : !ready ? (
         <p className="text-muted">Cargando…</p>
+      ) : session && recovering ? (
+        <NewPasswordCard onDone={() => { setRecovering(false); setChanged(true) }} />
       ) : session ? (
         <>
+          {changed && <p role="status" className="rounded-xl bg-free/10 p-3 text-base font-semibold text-free">Listo, guardamos tu contraseña nueva.</p>}
           <ProfileCard />
           {isAdmin && <ManagerTools />}
         </>
