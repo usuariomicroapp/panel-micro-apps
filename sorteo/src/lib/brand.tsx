@@ -91,3 +91,8 @@ export const orgLink = (b: Pick<Brand, 'code' | 'installLink'>) => {
   if (!b.code) return base
   try { const u = new URL(base); u.searchParams.set('o', b.code); return u.toString() } catch { return `${window.location.origin}/?o=${b.code}` }
 }
+
+// Link directo a un sorteo (pasa por el registro si hace falta y vuelve a ese sorteo).
+export const raffleLink = (b: Pick<Brand, 'code' | 'installLink'>, id: string) => {
+  try { const u = new URL(orgLink(b)); u.hash = `#/sorteo/${id}`; return u.toString() } catch { return `${orgLink(b)}#/sorteo/${id}` }
+}

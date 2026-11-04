@@ -8,6 +8,7 @@ import {
 } from '../../lib/data'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
 import Icon from '../../components/Icon'
+import { raffleLink, useBrand } from '../../lib/brand'
 
 interface Stats { taken: number; available: number; participants: number }
 
@@ -175,6 +176,16 @@ export default function Raffles() {
     void load()
   }
 
+  const brand = useBrand()
+  // Link directo a este sorteo para mandarlo al grupo de WhatsApp.
+  const shareRaffle = async (r: Raffle) => {
+    const link = raffleLink(brand, r.id)
+    const text = `🎟️ ${r.name}\nEntrá y elegí tu número acá:\n${link}`
+    if (navigator.share) {
+      try { await navigator.share({ text }) } catch { /* la persona cerró el menú */ }
+    } else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
+  }
+
   // Tachito: borra el sorteo por completo, con su foto y sus números.
   const remove = async (r: Raffle) => {
     const { data } = await supabase!.rpc('raffle_stats', { p_raffle: r.id })
@@ -204,10 +215,10 @@ export default function Raffles() {
           {items.map((r) => editing === r.id ? (
             <li key={r.id}><RaffleForm initial={r} products={products} photo={photos[r.product_id] || undefined} onDone={() => { setEditing(null); void load() }} /></li>
           ) : (
-            <li key={r.id} className="relative rounded-2xl border border-line p-4 pr-14">
+            <li key={r.id} className="relative rounded-2xl border border-line p-4">
               <button onClick={() => void remove(r)} aria-label={`Borrar ${r.name}`} title="Borrar sorteo"
                 className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-sold hover:bg-sold/10"><Icon name="trash" className="h-6 w-6" /></button>
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 pr-10">
                 {photos[r.product_id]
                   ? <img src={photos[r.product_id]} alt="" className="h-20 w-20 shrink-0 rounded-xl bg-night object-contain" />
                   : <span className="grid h-20 w-20 shrink-0 place-items-center rounded-xl bg-line text-2xl">🎁</span>}
@@ -232,9 +243,16 @@ export default function Raffles() {
               </div>
               <RaffleStats id={r.id} />
               {['draft', 'active', 'closed'].includes(r.status) && (
-                <Link to={`/admin?tab=dia&sorteo=${r.id}`} className={`${r.official_draw_date ? ghostCls : primaryCls} mt-3 block text-center`}>
-                  📅 {r.official_draw_date ? 'Cambiar día del sorteo' : 'Cargar día y Quiniela'}
-                </Link>
+                <div className={`mt-3 grid gap-2 ${r.status === 'active' ? 'grid-cols-2' : ''}`}>
+                  <Link to={`/admin?tab=dia&sorteo=${r.id}`} className={`${r.official_draw_date ? ghostCls : primaryCls} flex items-center justify-center px-2 text-center leading-tight`}>
+                    📅 {r.official_draw_date ? 'Cambiar día' : 'Cargar día y Quiniela'}
+                  </Link>
+                  {r.status === 'active' && (
+                    <button onClick={() => void shareRaffle(r)} className="btn-green flex items-center justify-center rounded-2xl px-2 py-3 text-center font-bold leading-tight">
+                      📲 Compartir al grupo
+                    </button>
+                  )}
+                </div>
               )}
             </li>
           ))}
