@@ -8,10 +8,12 @@ import PaymentMethods from './admin/PaymentMethods'
 import History from './admin/History'
 import Products from './admin/Products'
 import Raffles from './admin/Raffles'
+import ManualSales from './admin/ManualSales'
 
 const tabs = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'sorteos', label: 'Sorteos' },
+  { id: 'ventas', label: 'Ventas en persona' },
   { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
   { id: 'pagos', label: 'Medios de pago' },
@@ -73,6 +75,7 @@ export default function Admin() {
         </>
       )}
       {tab === 'sorteos' && <Raffles />}
+      {tab === 'ventas' && <ManualSales />}
       {tab === 'productos' && <Products />}
       {tab === 'configuracion' && <Settings />}
       {tab === 'pagos' && <PaymentMethods />}

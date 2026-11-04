@@ -76,8 +76,8 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
           <input name="price_per_number" type="number" required min="1" step="1" defaultValue={initial?.price_per_number ?? 5000} className={inputCls} />
         </label>
         <label className="block text-sm">Cantidad de números
-          <input type="number" required min={initial?.total_numbers ?? 2} max={10000} value={total} onChange={(e) => setTotal(Number(e.target.value))} className={inputCls} />
-          <span className="mt-1 block text-xs text-muted">Del {'0'.padStart(digitsFor(total), '0')} al {String(total - 1).padStart(digitsFor(total), '0')} · {digitsFor(total)} cifras</span>
+          <input type="number" required min={2} max={10000} value={total} onChange={(e) => setTotal(Number(e.target.value))} className={inputCls} />
+          <span className="mt-1 block text-xs text-muted">Del {'0'.padStart(digitsFor(total), '0')} al {String(total - 1).padStart(digitsFor(total), '0')} · {digitsFor(total)} cifras. Podés cambiarla cuando quieras, siempre que no quites números ya reservados o vendidos.</span>
         </label>
         <label className="block text-sm">Inicio (hora Argentina)
           <input name="starts_at" type="datetime-local" required defaultValue={toInputDateTime(initial?.starts_at ?? now.toISOString())} className={inputCls} />

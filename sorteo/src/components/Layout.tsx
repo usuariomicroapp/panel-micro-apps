@@ -5,6 +5,7 @@ import DemoBanner from './DemoBanner'
 
 const nav = [
   { to: '/', label: 'Sorteos', icon: 'M4 6h16M4 12h16M4 18h10' },
+  { to: '/premios', label: 'Premios', icon: 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z' },
   { to: '/resultados', label: 'Resultados', icon: 'M5 13l4 4L19 7' },
   { to: '/invitar', label: 'Invitar', icon: 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13' },
   { to: '/perfil', label: 'Mi perfil', icon: 'M12 12a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0' },
@@ -43,9 +44,9 @@ export default function Layout() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 md:pb-12">
         <Outlet />
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         {nav.map((n) => (
-          <NavLink key={n.to} to={n.to} end className={({ isActive }) => `flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium ${isActive ? 'text-brand-600' : 'text-muted'}`}>
+          <NavLink key={n.to} to={n.to} end className={({ isActive }) => `flex flex-col items-center gap-1 py-2.5 text-xs font-semibold ${isActive ? 'text-brand-600' : 'text-muted'}`}>
             <Icon d={n.icon} />
             {n.label}
           </NavLink>

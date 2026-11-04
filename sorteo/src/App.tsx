@@ -1,3 +1,4 @@
+import Catalog from './pages/Catalog'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import Welcome from './pages/Welcome'
@@ -15,6 +16,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/sorteo/:id" element={<Raffle />} />
+        <Route path="/premios" element={<Catalog />} />
         <Route path="/resultados" element={<Results />} />
         <Route path="/perfil" element={<Profile />} />
         <Route path="/invitar" element={<Invite />} />

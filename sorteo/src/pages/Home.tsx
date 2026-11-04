@@ -13,7 +13,6 @@ export default function Home() {
         <p className="text-sm font-semibold text-gold">Sorteos activos</p>
         <h1 className="mt-1 text-3xl font-extrabold md:text-4xl">Elegí tu número de la suerte</h1>
         <p className="mt-2 max-w-lg text-brand-100">Cada sorteo usa las dos últimas cifras del primer premio de la Quiniela de la Ciudad.</p>
-        <Link to="/bienvenida" className="mt-4 inline-block text-sm font-semibold text-white underline underline-offset-4">Ver pantalla de bienvenida</Link>
       </section>
 
       {loading && <p className="py-16 text-center text-muted">Cargando sorteos…</p>}
@@ -54,7 +53,8 @@ export default function Home() {
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-line">
                   <div className="h-full rounded-full bg-sold" style={{ width: `${pct}%` }} />
                 </div>
-                <p className="mt-1.5 text-xs text-muted">{c.paid} vendidos · {c.available} disponibles</p>
+                <p className="mt-1.5 text-sm text-muted">{c.paid} vendidos · {c.available} libres</p>
+                <span className="mt-4 block rounded-2xl bg-brand-600 py-3.5 text-center text-lg font-bold text-white group-hover:bg-brand-700">{r.status === 'active' ? 'Elegir mis números' : 'Ver sorteo'}</span>
               </div>
             </Link>
           )

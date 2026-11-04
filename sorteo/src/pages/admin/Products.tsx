@@ -71,6 +71,7 @@ function ProductForm({ initial, onDone }: { initial?: Product; onDone: () => voi
       reference_price: num(f.get('reference_price')),
       acquisition_cost: num(f.get('acquisition_cost')),
       prize_info: String(f.get('prize_info')).trim(),
+      show_in_store: f.get('show_in_store') === 'on',
       updated_at: new Date().toISOString(),
     }
     setBusy(true); setErr('')
@@ -78,7 +79,7 @@ function ProductForm({ initial, onDone }: { initial?: Product; onDone: () => voi
       ? await supabase!.from('products').update(row).eq('id', initial.id)
       : await supabase!.from('products').insert(row)
     setBusy(false)
-    if (error) setErr(error.message)
+    if (error) setErr(/show_in_store/.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message)
     else onDone()
   }
 
@@ -91,7 +92,7 @@ function ProductForm({ initial, onDone }: { initial?: Product; onDone: () => voi
         <label className="block text-sm sm:col-span-2">Descripción
           <textarea name="description" rows={3} maxLength={4000} defaultValue={initial?.description} className={inputCls} />
         </label>
-        <label className="block text-sm">Precio de referencia ($)
+        <label className="block text-sm">Precio o valor del producto ($)
           <input name="reference_price" type="number" min="0" step="0.01" defaultValue={initial?.reference_price ?? ''} className={inputCls} />
         </label>
         <label className="block text-sm">Costo de adquisición ($) <span className="text-muted">· privado</span>
@@ -99,6 +100,10 @@ function ProductForm({ initial, onDone }: { initial?: Product; onDone: () => voi
         </label>
         <label className="block text-sm sm:col-span-2">Información del premio
           <textarea name="prize_info" rows={2} maxLength={4000} defaultValue={initial?.prize_info} placeholder="Garantía, entrega, retiro…" className={inputCls} />
+        </label>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input name="show_in_store" type="checkbox" defaultChecked={initial?.show_in_store ?? true} className="h-5 w-5" />
+          Mostrar en el catálogo de premios que ven los participantes
         </label>
       </div>
       {err && <Notice kind="error">{err}</Notice>}
@@ -142,9 +147,9 @@ export default function Products() {
             <li key={p.id} className="rounded-2xl border border-line p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="text-sm">
-                  <p className="font-semibold">{p.name}</p>
+                  <p className="font-semibold">{p.name}{p.show_in_store === false && <span className="ml-2 rounded-full bg-canvas px-2 py-0.5 text-xs text-muted">Oculto en el catálogo</span>}</p>
                   <p className="text-muted">
-                    {p.reference_price != null && <>Referencia {pesos(p.reference_price)} · </>}
+                    {p.reference_price != null && <>Precio {pesos(p.reference_price)} · </>}
                     {p.acquisition_cost != null && <>Costo {pesos(p.acquisition_cost)}</>}
                   </p>
                 </div>

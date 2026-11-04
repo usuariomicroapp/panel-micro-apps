@@ -3,7 +3,7 @@ import PrizeArt from './PrizeArt'
 import type { RaffleView } from '../lib/publicRaffles'
 
 // Muestra las fotos reales del premio; si no hay, la ilustración de ejemplo o un fondo neutro.
-export default function RaffleImage({ raffle, className = '', gallery = false }: { raffle: RaffleView; className?: string; gallery?: boolean }) {
+export default function RaffleImage({ raffle, className = '', gallery = false }: { raffle: Pick<RaffleView, 'name' | 'prize' | 'photos' | 'art'>; className?: string; gallery?: boolean }) {
   const [i, setI] = useState(0)
   if (raffle.photos.length) {
     return (

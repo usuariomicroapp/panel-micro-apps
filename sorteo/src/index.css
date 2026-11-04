@@ -21,6 +21,8 @@
 }
 
 html, body, #root { min-height: 100%; }
+/* Letra un poco más grande para que se lea bien sin anteojos. */
+html { font-size: 17px; }
 body {
   background: var(--color-canvas);
   color: var(--color-ink);

@@ -24,6 +24,7 @@ export interface Product {
   reference_price: number | null
   acquisition_cost?: number | null
   prize_info: string
+  show_in_store?: boolean
   created_at: string
 }
 

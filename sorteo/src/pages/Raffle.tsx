@@ -10,6 +10,8 @@ export default function Raffle() {
   const { id } = useParams()
   const { loading, error, data: raffle } = usePublicRaffle(id)
   const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [search, setSearch] = useState('')
+  const [searchMsg, setSearchMsg] = useState('')
 
   if (loading) return <p className="py-20 text-center text-muted">Cargando sorteo…</p>
   if (error) return <p className="py-20 text-center text-red-700">{error} <Link to="/" className="font-semibold text-brand-600">Volver</Link></p>
@@ -26,6 +28,18 @@ export default function Raffle() {
       else next.add(n)
       return next
     })
+  const findNumber = (e: React.FormEvent) => {
+    e.preventDefault()
+    const n = Number(search)
+    if (search.trim() === '' || !Number.isInteger(n) || n < 0 || n >= raffle.totalNumbers) {
+      return setSearchMsg(`Escribí un número del ${pad(0, raffle.digits)} al ${pad(raffle.totalNumbers - 1, raffle.digits)}.`)
+    }
+    const st = raffle.states[n] ?? 'available'
+    if (st !== 'available') return setSearchMsg(`El ${pad(n, raffle.digits)} ya está ${st === 'paid' ? 'vendido' : 'reservado'}. Probá con otro.`)
+    if (!selected.has(n)) toggle(n)
+    setSearchMsg(`¡Listo! Elegiste el ${pad(n, raffle.digits)}.`)
+    setSearch('')
+  }
   const chosen = [...selected].sort((a, b) => a - b)
   const total = chosen.length * raffle.pricePerNumber
 
@@ -54,11 +68,30 @@ export default function Raffle() {
 
         <section className="rounded-3xl border border-line bg-surface p-5 md:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">Elegí tus números</h2>
-            <GridLegend />
+            <h2 className="text-xl font-bold">Elegí tus números</h2>
           </div>
+          {open && (
+            <ol className="mb-4 space-y-1.5 rounded-2xl bg-brand-50 p-4 text-base">
+              <li><b>1.</b> Tocá un número <b className="text-free">verde</b> (o escribilo abajo).</li>
+              <li><b>2.</b> Tocá <b>Reservar números</b>.</li>
+              <li><b>3.</b> Pagá por transferencia y mandá el comprobante.</li>
+            </ol>
+          )}
+          {open && (
+            <form onSubmit={findNumber} className="mb-4">
+              <label className="block text-base font-medium">¿Tenés un número favorito?
+                <div className="mt-1 flex gap-2">
+                  <input value={search} onChange={(e) => { setSearch(e.target.value.replace(/\D/g, '')); setSearchMsg('') }} inputMode="numeric" maxLength={raffle.digits}
+                    placeholder={`Ej.: ${pad(37, raffle.digits)}`} className="w-full rounded-xl border-2 border-line bg-surface px-4 py-3 text-xl font-bold tabular-nums outline-none focus:border-brand-500" />
+                  <button className="shrink-0 rounded-xl bg-ink px-5 text-lg font-bold text-white">Elegir</button>
+                </div>
+              </label>
+              {searchMsg && <p className="mt-2 text-base font-medium" role="status">{searchMsg}</p>}
+            </form>
+          )}
+          <div className="mb-3"><GridLegend /></div>
           <NumberGrid total={raffle.totalNumbers} digits={raffle.digits} states={raffle.states} selected={selected} onToggle={open ? toggle : () => {}} />
-          <p className="mt-3 text-xs text-muted">{c.available} disponibles · {c.reserved} reservados · {c.paid} pagados</p>
+          <p className="mt-3 text-sm text-muted">{c.available} libres · {c.reserved} reservados · {c.paid} pagados</p>
         </section>
       </div>
 

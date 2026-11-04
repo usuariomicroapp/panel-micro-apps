@@ -1,3 +1,5 @@
+import { useBrand } from '../lib/brand'
+
 export function LogoMark({ size = 40 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 128 128" aria-hidden="true">
@@ -16,11 +18,20 @@ export function LogoMark({ size = 40 }: { size?: number }) {
   )
 }
 
+// Logo propio del emprendimiento si se cargó; si no, el de SORTEO.
+export function BrandMark({ size = 40 }: { size?: number }) {
+  const { logoUrl, name } = useBrand()
+  if (logoUrl) return <img src={logoUrl} alt={`Logo de ${name}`} width={size} height={size} className="rounded-xl object-cover" style={{ width: size, height: size }} />
+  return <LogoMark size={size} />
+}
+
 export function Logo({ light = false }: { light?: boolean }) {
+  const { name } = useBrand()
+  const long = name.length > 14
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <LogoMark size={36} />
-      <span className={`text-xl font-extrabold tracking-[0.18em] ${light ? 'text-white' : 'text-brand-900'}`}>SORTEO</span>
+    <span className="inline-flex min-w-0 items-center gap-2.5">
+      <BrandMark size={36} />
+      <span className={`truncate font-extrabold ${long ? 'text-lg' : 'text-xl tracking-[0.12em]'} ${light ? 'text-white' : 'text-brand-900'}`}>{name}</span>
     </span>
   )
 }

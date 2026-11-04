@@ -91,7 +91,7 @@ select pg_temp.check((select count(*) from raffle_numbers where state = 'paid') 
 select pg_temp.check((select collected_verified from raffle_stats('20000000-0000-0000-0000-000000000001')) = 10000, 'estadística: cobrado y verificado = $10.000');
 select pg_temp.expect_error(format($$select reject_payment(%L, 'x')$$, :'p_id'), 'un pago aprobado no se puede rechazar después');
 select pg_temp.expect_error($$update raffles set price_per_number = 1 where id = '20000000-0000-0000-0000-000000000001'$$, 'con ventas no se puede cambiar el precio');
-select pg_temp.expect_error($$update raffles set total_numbers = 50 where id = '20000000-0000-0000-0000-000000000001'$$, 'la grilla no se puede achicar');
+select pg_temp.expect_error($$update raffles set total_numbers = 5 where id = '20000000-0000-0000-0000-000000000001'$$, 'la grilla no se achica por debajo de un número vendido');
 
 -- Rechazo --------------------------------------------------------------------
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
