@@ -4,6 +4,7 @@ import { Logo } from './Logo'
 import { useAuth } from '../lib/auth'
 import { useBrand } from '../lib/brand'
 import Notices from './Notices'
+import JoinOrganizer from './JoinOrganizer'
 import Icon, { type IconName } from './Icon'
 
 const nav: { to: string; label: string; icon: IconName }[] = [
@@ -57,6 +58,7 @@ export default function Layout() {
           {isAdmin && <Link to="/admin" className="btn-gold rounded-full px-4 py-2 text-sm font-extrabold md:hidden">Panel</Link>}
         </div>
       </header>
+      <JoinOrganizer />
       <Notices />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 md:pb-12">
         <Outlet />
