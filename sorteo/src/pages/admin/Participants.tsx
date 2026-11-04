@@ -155,7 +155,7 @@ export default function Participants() {
       </Card>
 
       {open && raffle && (
-        <Card title="Anotar a alguien en persona">
+        <Card title="Anotar a alguien en persona" collapsible hint="Para quien elige su número sin celular">
           <form onSubmit={save} className="space-y-4">
             <div>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

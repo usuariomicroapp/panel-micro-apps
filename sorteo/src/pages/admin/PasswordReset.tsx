@@ -34,7 +34,7 @@ export default function PasswordReset() {
 
   const text = done ? `Hola! Ya podés entrar a la app con tu correo ${done.email} y esta contraseña: ${done.password}` : ''
   return (
-    <Card title="Contraseña olvidada">
+    <Card title="Contraseña olvidada" collapsible hint="Darle una contraseña nueva a un cliente">
       <p className="mb-4 text-base text-muted">Si un cliente no puede entrar, escribí su correo y una contraseña nueva. Después se la mandás por WhatsApp.</p>
       <form onSubmit={save} className="space-y-3">
         <label className="block text-base font-semibold">Correo del cliente

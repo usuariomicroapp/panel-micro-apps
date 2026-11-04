@@ -63,7 +63,7 @@ export default function Invite() {
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <h1 className="text-2xl font-extrabold">Invitar participantes</h1>
+      <h1 className="text-2xl font-extrabold">{isAdmin ? 'Invitar participantes' : 'Invitar a otras personas'}</h1>
 
       <Card title="Mensaje que se comparte">
         <pre className="whitespace-pre-wrap rounded-2xl bg-canvas p-4 font-sans text-base">{message}</pre>

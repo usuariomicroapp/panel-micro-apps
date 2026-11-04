@@ -5,6 +5,7 @@ import { useAuth, type Profile } from '../../lib/auth'
 import { useBrand } from '../../lib/brand'
 import { fecha } from '../../lib/format'
 import { downloadFile } from '../../lib/download'
+import ShareBox from '../../components/ShareBox'
 
 const missing = (m: string) => (/app_paused|paused_message|is_owner/.test(m) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : m)
 
@@ -26,7 +27,7 @@ function Pause() {
   }
 
   return (
-    <Card title="Estado de la app">
+    <Card title="Estado de la app" collapsible hint={brand.paused ? 'Pausada' : 'Funcionando'}>
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-muted">Si pausás la app, todos la siguen viendo pero nadie puede elegir números ni anotar participantes. Tu cliente no puede reanudarla.</p>
@@ -66,7 +67,7 @@ function Accounts() {
   const shown = (people ?? []).filter((p) => !q || `${p.first_name} ${p.last_name} ${p.email} ${p.phone}`.toLowerCase().includes(q.toLowerCase()))
 
   return (
-    <Card title="Cuentas">
+    <Card title="Cuentas" collapsible hint="Habilitá a tus clientes como organizadores">
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, correo o teléfono" className={inputCls} />
       {err && <div className="mt-3"><Notice kind="error">{err}</Notice></div>}
       {!people ? <p className="mt-3 text-muted">Cargando…</p> : (
@@ -113,7 +114,7 @@ function Backup() {
     setMsg({ kind: 'ok', text: 'Copia descargada. Guardala en un lugar seguro: tiene nombres y teléfonos.' })
   }
   return (
-    <Card title="Copia de seguridad">
+    <Card title="Copia de seguridad" collapsible hint="Descargá todos los datos en un archivo">
       <p className="text-sm text-muted">Descarga todos los datos de esta app (sorteos, premios, participantes, resultados) en un solo archivo. Conviene hacerlo una vez por semana. Las fotos quedan guardadas en Supabase.</p>
       {msg && <div className="mt-3"><Notice kind={msg.kind}>{msg.text}</Notice></div>}
       <button onClick={download} disabled={busy} className={`${primaryCls} mt-4`}>{busy ? 'Preparando…' : 'Descargar copia de seguridad'}</button>
@@ -121,10 +122,18 @@ function Backup() {
   )
 }
 
+// Link para que los clientes del dueño se sumen como organizadores.
+function InviteOrganizers() {
+  const { name } = useBrand()
+  const link = `${window.location.origin}/#/perfil`
+  const message = `¡Hola! Te invito a usar ${name} para organizar tus sorteos.\n\n1. Entrá a este link y creá tu cuenta:\n${link}\n\n2. Avisame por acá y te habilito el panel de organizador para que cargues tus sorteos.`
+  return <ShareBox title="Sumar organizadores" text="Mandale este link a tus clientes. Cuando creen su cuenta, abrí Cuentas y tocá «Hacer organizador»." message={message} link={link} />
+}
+
 export default function Owner() {
   return (
-    <div className="space-y-6">
-      <Notice kind="ok">Este es tu panel de dueño. Tu cliente (el organizador) no lo ve y no puede quitarte el control.</Notice>
+    <div className="space-y-4">
+      <InviteOrganizers />
       <Pause />
       <Accounts />
       <Backup />

@@ -11,6 +11,7 @@ import Participants from './admin/Participants'
 import Owner from './admin/Owner'
 import DrawDay from './admin/DrawDay'
 import PasswordReset from './admin/PasswordReset'
+import ShareBox, { useInviteMessage } from '../components/ShareBox'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
@@ -27,8 +28,7 @@ export default function Admin() {
   const { ready, canManage, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
-  const tabs = isOwner ? [{ id: 'dueno', label: 'Mi panel de dueño' }, ...baseTabs] : baseTabs
-  const tab = params.get('tab') ?? (isOwner ? 'dueno' : 'resumen')
+  const tab = params.get('tab') ?? 'resumen'
 
   if (!isConfigured) {
     return <ComingSoon stage={3}>El panel se activa cuando la app está conectada a la base de datos.</ComingSoon>
@@ -52,10 +52,23 @@ export default function Admin() {
     )
   }
 
+  // El dueño ve solo su panel. Para ver los otros paneles usa cuentas aparte.
+  if (isOwner) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <p className="label text-gold-dark">Panel del dueño</p>
+          <h1 className="font-display text-3xl font-bold">Mi panel</h1>
+        </div>
+        <Owner />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
-        <p className="label text-gold-dark">{isOwner ? 'Panel del dueño' : 'Panel del organizador'}</p>
+        <p className="label text-gold-dark">Panel del organizador</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-3xl font-bold">Administración</h1>
           <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="card rounded-full px-4 py-2 text-sm font-bold">
@@ -64,16 +77,15 @@ export default function Admin() {
         </div>
       </div>
       <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 pt-1">
-        {tabs.map((t) => (
+        {baseTabs.map((t) => (
           <button key={t.id} onClick={() => setParams({ tab: t.id })}
             className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-extrabold ${tab === t.id ? 'btn-gold' : 'card text-muted'}`}>
             {t.label}
           </button>
         ))}
       </nav>
-      {tab === 'resumen' && <Overview />}
+      {tab === 'resumen' && <><InviteParticipants /><Overview /></>}
       {tab === 'dia' && <DrawDay />}
-      {tab === 'dueno' && isOwner && <Owner />}
       {tab === 'sorteos' && <Raffles />}
       {tab === 'participantes' && <><Participants /><PasswordReset /></>}
       {tab === 'productos' && <Products />}
@@ -81,4 +93,10 @@ export default function Admin() {
       {tab === 'historial' && <History />}
     </div>
   )
+}
+
+// Link para que los participantes instalen la app y elijan su número.
+function InviteParticipants() {
+  const { link, message } = useInviteMessage()
+  return <ShareBox title="Invitar participantes" text="Mandá este link para que instalen la app y elijan su número." message={message} link={link} />
 }
