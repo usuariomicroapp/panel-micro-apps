@@ -71,7 +71,7 @@ export default function Layout() {
         </div>
       </header>
       <JoinOrganizer />
-      {!isAdmin && <PushBanner />}
+      {!isAdmin && pathname !== '/mis-numeros' && <PushBanner />}
       <Notices />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 md:pb-12">
         <Outlet />

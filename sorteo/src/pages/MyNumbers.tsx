@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase, isConfigured } from '../lib/supabase'
-import { fecha, pad } from '../lib/format'
+import { fecha, pad, waLink } from '../lib/format'
 import { slotTimes, type DrawSlot } from '../lib/data'
 import { InstallCard, PushCard } from '../components/AppSetup'
 
@@ -13,12 +13,13 @@ interface Row {
   status: string
   created_at: string
   notes: string
-  raffles: { name: string; digits: number; is_demo: boolean; status: string; closes_at: string; official_draw_date: string | null; official_draw_slot: DrawSlot | null } | null
+  raffles: { name: string; organizer_id: string | null; digits: number; is_demo: boolean; status: string; closes_at: string; official_draw_date: string | null; official_draw_slot: DrawSlot | null } | null
 }
 
 // Los números que eligió la persona en cada sorteo.
 export default function MyNumbers() {
-  const { ready, session } = useAuth()
+  const { ready, session, profile } = useAuth()
+  const [phones, setPhones] = useState<Record<string, string>>({})
   const [params] = useSearchParams()
   const fresh = params.get('nueva')
   const [rows, setRows] = useState<Row[] | null>(null)
@@ -27,10 +28,17 @@ export default function MyNumbers() {
   const load = useCallback(async () => {
     if (!supabase || !session) return
     const { data, error } = await supabase.from('reservations')
-      .select('id, raffle_id, numbers, status, created_at, notes, raffles(name, digits, is_demo, status, closes_at, official_draw_date, official_draw_slot)')
+      .select('id, raffle_id, numbers, status, created_at, notes, raffles(name, organizer_id, digits, is_demo, status, closes_at, official_draw_date, official_draw_slot)')
       .eq('user_id', session.user.id).order('created_at', { ascending: false })
     if (error) setErr('No se pudieron cargar tus números.')
-    else setRows((data ?? []) as unknown as Row[])
+    else {
+      const list = (data ?? []) as unknown as Row[]
+      setRows(list)
+      // WhatsApp de cada organizador, para el botón "Informar al administrador".
+      const orgs = [...new Set(list.map((r) => r.raffles?.organizer_id).filter(Boolean))] as string[]
+      const found = await Promise.all(orgs.map(async (o) => [o, (await supabase!.rpc('organizer_whatsapp', { p_org: o })).data as string | null] as const))
+      setPhones(Object.fromEntries(found.filter(([, ph]) => !!ph)) as Record<string, string>)
+    }
   }, [session])
 
   useEffect(() => { void load() }, [load])
@@ -61,7 +69,6 @@ export default function MyNumbers() {
     <div className="mx-auto max-w-xl space-y-5">
       <h1 className="text-2xl font-extrabold">Mis números</h1>
       {err && <p role="alert" className="rounded-xl bg-sold/10 p-3 text-sold">{err}</p>}
-      {fresh && <><InstallCard compact /><PushCard /></>}
       {rows === null ? <p className="text-muted">Cargando…</p> : mine.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-line bg-surface p-8 text-center">
           <p className="text-lg">Todavía no elegiste números.</p>
@@ -82,10 +89,18 @@ export default function MyNumbers() {
             </div>
             <p className="mt-3 text-base">Elegido el {fecha(r.created_at)}.</p>
             {r.raffles?.official_draw_date && <p className="text-base">Se sortea el {r.raffles.official_draw_date.split('-').reverse().join('/')}{r.raffles.official_draw_slot && ` a las ${slotTimes[r.raffles.official_draw_slot]}`}. Si ganás, te avisamos acá en la app y el organizador se comunica con vos.</p>}
+            {(() => {
+              const ph = r.raffles?.organizer_id ? phones[r.raffles.organizer_id] : ''
+              if (!ph) return null
+              const who = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim()
+              const msg = `¡Hola! Soy ${who || 'participante'}${profile?.phone ? ` (${profile.phone})` : ''}. En el sorteo "${r.raffles?.name ?? ''}" elegí ${r.numbers.length === 1 ? 'el número' : 'los números'}: ${r.numbers.map((n) => pad(n, digits)).join(', ')}.`
+              return <a href={waLink(ph, msg)} target="_blank" rel="noreferrer" className="btn-green mt-4 block rounded-2xl py-4 text-center text-lg font-extrabold">📲 Informar al administrador</a>
+            })()}
             {canRelease && <button onClick={() => release(r)} className="mt-4 w-full rounded-2xl border border-line py-3 font-semibold text-muted">Soltar mis números</button>}
           </article>
         )
       })}
+      {fresh && <><InstallCard compact /><PushCard /></>}
       {released.length > 0 && (
         <div className="rounded-2xl bg-canvas p-4 text-sm text-muted">
           {released.map((r) => <p key={r.id}>{r.raffles?.name}: el organizador liberó {r.numbers.map((n) => pad(n, r.raffles?.digits ?? 2)).join(', ')}. {r.notes.split('Liberado:')[1]?.trim()}</p>)}
