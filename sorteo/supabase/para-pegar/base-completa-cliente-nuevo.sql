@@ -2265,3 +2265,5 @@ begin
 end $$;
 revoke execute on function owner_install_stats() from public, anon;
 grant execute on function owner_install_stats() to authenticated;
+
+notify pgrst, 'reload schema';
