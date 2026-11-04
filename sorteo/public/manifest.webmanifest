@@ -28,5 +28,12 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "id": "/",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://sorteo-5yd.pages.dev/manifest.webmanifest"
+    }
   ]
 }
