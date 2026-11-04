@@ -4,25 +4,22 @@ import { useAuth } from '../lib/auth'
 import { isConfigured } from '../lib/supabase'
 import Overview from './admin/Overview'
 import Settings from './admin/Settings'
-import PaymentMethods from './admin/PaymentMethods'
 import History from './admin/History'
 import Products from './admin/Products'
 import Raffles from './admin/Raffles'
-import ManualSales from './admin/ManualSales'
+import Participants from './admin/Participants'
 import Owner from './admin/Owner'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'sorteos', label: 'Sorteos' },
-  { id: 'ventas', label: 'Ventas en persona' },
+  { id: 'participantes', label: 'Participantes' },
   { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
-  { id: 'pagos', label: 'Datos para cobrar (CBU)' },
   { id: 'historial', label: 'Historial' },
 ] as const
 
 const upcoming = [
-  { title: 'Pagos pendientes', desc: 'Comprobantes, aprobar o rechazar', stage: 7 },
   { title: 'Resultados', desc: 'Confirmar resultado oficial y publicar ganador', stage: 8 },
 ]
 
@@ -40,7 +37,7 @@ export default function Admin() {
   if (canManage && viewAsBuyer) {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
-        <p className="text-muted">Estás viendo la app como comprador.</p>
+        <p className="text-muted">Estás viendo la app como participante.</p>
         <button onClick={() => setViewAsBuyer(false)} className="mt-6 rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white">Volver a mi panel</button>
       </div>
     )
@@ -62,7 +59,7 @@ export default function Admin() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold">{isOwner ? 'Administración (dueño)' : 'Administración'}</h1>
           <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-brand-700">
-            Ver como comprador
+            Ver como participante
           </button>
         </div>
       </div>
@@ -92,10 +89,9 @@ export default function Admin() {
       )}
       {tab === 'dueno' && isOwner && <Owner />}
       {tab === 'sorteos' && <Raffles />}
-      {tab === 'ventas' && <ManualSales />}
+      {tab === 'participantes' && <Participants />}
       {tab === 'productos' && <Products />}
       {tab === 'configuracion' && <Settings />}
-      {tab === 'pagos' && <PaymentMethods />}
       {tab === 'historial' && <History />}
     </div>
   )

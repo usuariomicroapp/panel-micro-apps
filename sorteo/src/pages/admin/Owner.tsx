@@ -16,7 +16,7 @@ function Pause() {
   useEffect(() => setMessage(brand.pausedMessage), [brand.pausedMessage])
 
   const set = async (paused: boolean) => {
-    if (paused && !window.confirm('¿Pausar la app? Nadie va a poder reservar ni cargar ventas hasta que la reanudes.')) return
+    if (paused && !window.confirm('¿Pausar la app? Nadie va a poder elegir números hasta que la reanudes.')) return
     setBusy(true); setMsg(null)
     const { error } = await supabase!.from('settings').update({ app_paused: paused, paused_message: message.trim() || 'La app está pausada momentáneamente.' }).eq('id', 1)
     setBusy(false)
@@ -28,7 +28,7 @@ function Pause() {
     <Card title="Estado de la app">
       <div className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted">Si pausás la app, todos la siguen viendo pero nadie puede reservar ni cargar ventas. Tu cliente no puede reanudarla.</p>
+          <p className="text-sm text-muted">Si pausás la app, todos la siguen viendo pero nadie puede elegir números ni anotar participantes. Tu cliente no puede reanudarla.</p>
           <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${brand.paused ? 'bg-sold/10 text-sold' : 'bg-free/15 text-free'}`}>{brand.paused ? 'Pausada' : 'Funcionando'}</span>
         </div>
         <label className="block text-sm">Mensaje que se muestra al pausar
@@ -54,7 +54,7 @@ function Accounts() {
 
   const setRole = async (p: Profile, role: Profile['role']) => {
     const who = `${p.first_name} ${p.last_name}`.trim() || p.email
-    const text = role === 'admin' ? `¿Hacer organizador a ${who}? Va a poder crear sorteos, cargar ventas y ver los datos de los compradores.` : `¿Quitarle a ${who} el rol de organizador?`
+    const text = role === 'admin' ? `¿Hacer organizador a ${who}? Va a poder crear sorteos, anotar participantes y ver sus nombres y teléfonos.` : `¿Quitarle a ${who} el rol de organizador?`
     if (!window.confirm(text)) return
     setErr('')
     const { error } = await supabase!.from('profiles').update({ role }).eq('id', p.id)
@@ -86,7 +86,7 @@ function Accounts() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-muted">Comprador</span>
+                  <span className="rounded-full bg-canvas px-2.5 py-0.5 text-xs font-semibold text-muted">Participante</span>
                   <button onClick={() => setRole(p, 'admin')} className="font-semibold text-brand-600">Hacer organizador</button>
                 </div>
               )}

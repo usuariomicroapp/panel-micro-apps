@@ -29,7 +29,7 @@ export default function NumberGrid({ total, digits, states, selected, onToggle }
             disabled={state !== 'available'}
             onClick={() => onToggle(n)}
             aria-pressed={isSel}
-            aria-label={`Número ${label}: ${state === 'available' ? 'disponible' : state === 'reserved' ? 'reservado' : 'vendido'}`}
+            aria-label={`Número ${label}: ${state === 'available' ? 'disponible' : 'ya elegido'}`}
             className={`min-h-14 rounded-xl border-2 text-xl font-bold tabular-nums transition sm:aspect-square sm:min-h-0 sm:text-base ${
               isSel ? 'scale-105 border-brand-600 bg-brand-600 text-white shadow-md' : styles[state]
             }`}
@@ -45,8 +45,7 @@ export default function NumberGrid({ total, digits, states, selected, onToggle }
 export function GridLegend() {
   const items = [
     ['bg-free', 'Verde: libre'],
-    ['bg-held', 'Amarillo: reservado'],
-    ['bg-sold', 'Rojo: vendido'],
+    ['bg-sold', 'Rojo: ya elegido'],
     ['bg-brand-600', 'Violeta: elegido por vos'],
   ]
   return (

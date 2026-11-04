@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import PaymentMethods from './admin/PaymentMethods'
 import ComingSoon from '../components/ComingSoon'
 import { useAuth } from '../lib/auth'
 import { isConfigured, supabase } from '../lib/supabase'
 
-const sections = ['Mis pagos y comprobantes', 'Premios ganados']
+const sections = ['Premios ganados']
 
 const input = 'mt-1 w-full rounded-xl border border-line bg-surface px-4 py-3 outline-none focus:border-brand-500 disabled:bg-canvas'
 const primary = 'w-full rounded-2xl bg-brand-600 py-3.5 font-bold text-white active:scale-[.99] disabled:cursor-not-allowed disabled:bg-brand-600/40'
@@ -69,7 +68,7 @@ function AuthForm() {
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm">Nombre<input name="first_name" required maxLength={80} autoComplete="given-name" className={input} /></label>
           <label className="block text-sm">Apellido<input name="last_name" required maxLength={80} autoComplete="family-name" className={input} /></label>
-          <label className="col-span-2 block text-sm">Teléfono<input name="phone" required type="tel" pattern="[0-9 +()\-]{6,25}" autoComplete="tel" placeholder="11 5555-5555" className={input} /></label>
+          <label className="col-span-2 block text-sm">Teléfono<input name="phone" required type="tel" minLength={6} autoComplete="tel" placeholder="11 5555-5555" className={input} /></label>
         </div>
       )}
       <label className="block text-sm">Correo electrónico<input name="email" type="email" required autoComplete="email" placeholder="tu@correo.com" className={input} /></label>
@@ -115,7 +114,7 @@ function ProfileCard() {
       <div className="grid grid-cols-2 gap-3">
         <label className="block text-sm">Nombre<input name="first_name" defaultValue={profile.first_name} maxLength={80} className={input} /></label>
         <label className="block text-sm">Apellido<input name="last_name" defaultValue={profile.last_name} maxLength={80} className={input} /></label>
-        <label className="col-span-2 block text-sm">Teléfono<input name="phone" type="tel" defaultValue={profile.phone} pattern="[0-9 +()\-]{0,25}" className={input} /></label>
+        <label className="col-span-2 block text-sm">Teléfono<input name="phone" type="tel" defaultValue={profile.phone} inputMode="tel" className={input} /></label>
       </div>
       <p className="text-xs text-muted">Registrado el {new Date(profile.created_at).toLocaleDateString('es-AR')}</p>
       {saved && <p role="status" className="text-sm text-free">Datos guardados.</p>}
@@ -127,7 +126,7 @@ function ProfileCard() {
   )
 }
 
-// Para el organizador: acceso al panel, ver como comprador y sus datos para cobrar.
+// Para el organizador: acceso al panel y ver como participante.
 function ManagerTools() {
   const { setViewAsBuyer } = useAuth()
   const navigate = useNavigate()
@@ -135,12 +134,7 @@ function ManagerTools() {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Link to="/admin" className="rounded-2xl bg-ink py-3.5 text-center font-bold text-white">Ir a mi panel</Link>
-        <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-2xl border border-line py-3.5 font-semibold text-brand-700">Ver como comprador</button>
-      </div>
-      <div>
-        <h2 className="mb-1 text-lg font-bold">Tus datos para cobrar</h2>
-        <p className="mb-3 text-sm text-muted">Cargá tu CBU o CVU, alias y titular. Cuando un comprador elige números, le aparecen estos datos con el monto a transferir.</p>
-        <PaymentMethods />
+        <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-2xl border border-line py-3.5 font-semibold text-brand-700">Ver como participante</button>
       </div>
     </div>
   )
@@ -166,7 +160,7 @@ export default function Profile() {
       {session && <Link to="/mis-numeros" className="block rounded-2xl bg-brand-600 py-4 text-center text-lg font-bold text-white">Ver mis números</Link>}
       {!isAdmin && <div className="grid grid-cols-2 gap-3">
         {sections.map((s) => (
-          <div key={s} className="rounded-2xl border border-line bg-surface p-4 text-sm font-semibold text-muted">{s}<span className="mt-1 block text-xs font-normal">Disponible en Etapa 7–8</span></div>
+          <div key={s} className="rounded-2xl border border-line bg-surface p-4 text-sm font-semibold text-muted">{s}<span className="mt-1 block text-xs font-normal">Disponible en la Etapa 8</span></div>
         ))}
       </div>}
     </div>

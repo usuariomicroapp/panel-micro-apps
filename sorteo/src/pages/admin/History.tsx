@@ -5,8 +5,8 @@ import { Card } from '../../components/ui'
 interface Log { id: number; actor: string | null; action: string; table_name: string | null; record_id: string | null; at: string }
 
 const tables: Record<string, string> = {
-  products: 'Producto', raffles: 'Sorteo', settings: 'Configuración', payment_methods: 'Medio de pago',
-  payments: 'Pago', reservations: 'Reserva', lottery_draws: 'Resultado oficial', winners: 'Ganador',
+  products: 'Producto', raffles: 'Sorteo', settings: 'Configuración',
+  reservations: 'Números elegidos', lottery_draws: 'Resultado oficial', winners: 'Ganador',
   expenses: 'Gasto', profiles: 'Perfil',
 }
 const actions: Record<string, string> = { insert: 'creó', update: 'modificó', delete: 'eliminó' }

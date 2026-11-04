@@ -18,9 +18,9 @@ interface AuthState {
   session: Session | null
   profile: Profile | null
   refreshProfile: () => Promise<void>
-  /** Puede administrar (organizador o dueño), aunque esté mirando como comprador. */
+  /** Puede administrar (organizador o dueño), aunque esté mirando como participante. */
   canManage: boolean
-  /** Administra y no está en modo "ver como comprador". */
+  /** Administra y no está en modo "ver como participante". */
   isAdmin: boolean
   isOwner: boolean
   viewAsBuyer: boolean

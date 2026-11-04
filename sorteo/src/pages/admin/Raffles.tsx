@@ -5,17 +5,17 @@ import {
   digitsFor, fromInputDateTime, slotLabels, statusLabels, toInputDateTime, unsoldLabels,
   type DrawSlot, type Product, type Raffle, type RaffleStatus, type UnsoldPolicy,
 } from '../../lib/data'
-import { fecha, pesos } from '../../lib/format'
+import { fecha } from '../../lib/format'
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
 
-interface Stats { sold: number; reserved: number; available: number; collected_verified: number; pending_amount: number }
+interface Stats { taken: number; available: number; participants: number }
 
 const explain = (msg: string) => {
   if (/active_needs_rules/.test(msg)) return 'Para activar el sorteo completá la fecha y el horario del sorteo oficial y qué pasa si el número ganador no se vendió.'
   if (/closes_after_start/.test(msg)) return 'La fecha de cierre tiene que ser posterior a la de inicio.'
   if (/digits_fit_numbers/.test(msg)) return 'La cantidad de cifras no alcanza para esa cantidad de números.'
   if (/solo puede ampliarse/.test(msg)) return 'La cantidad de números solo se puede ampliar, no reducir.'
-  if (/ya tiene números/.test(msg)) return 'Este sorteo ya tiene números reservados o vendidos: no se pueden cambiar el precio ni las reglas.'
+  if (/ya tiene números/.test(msg)) return 'Este sorteo ya tiene números elegidos: no se pueden cambiar sus reglas.'
   return msg
 }
 
@@ -34,7 +34,6 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
       name: s('name'),
       product_id: s('product_id'),
       description: s('description'),
-      price_per_number: Number(s('price_per_number')),
       total_numbers: total,
       digits: digitsFor(total),
       starts_at: fromInputDateTime(s('starts_at')),
@@ -43,7 +42,6 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
       official_draw_slot: (s('official_draw_slot') || null) as DrawSlot | null,
       unsold_policy: (s('unsold_policy') || null) as UnsoldPolicy | null,
       no_winner_notes: s('no_winner_notes'),
-      reservation_minutes: Number(s('reservation_minutes')),
       max_numbers_per_reservation: Number(s('max_numbers_per_reservation')),
       is_demo: f.get('is_demo') === 'on',
       status: s('status') as RaffleStatus,
@@ -72,17 +70,14 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
         <label className="block text-sm sm:col-span-2">Descripción
           <textarea name="description" rows={2} maxLength={4000} defaultValue={initial?.description} className={inputCls} />
         </label>
-        <label className="block text-sm">Precio por número ($)
-          <input name="price_per_number" type="number" required min="1" step="1" defaultValue={initial?.price_per_number ?? 5000} className={inputCls} />
-        </label>
         <label className="block text-sm">Cantidad de números
           <input type="number" required min={2} max={10000} value={total} onChange={(e) => setTotal(Number(e.target.value))} className={inputCls} />
-          <span className="mt-1 block text-xs text-muted">Del {'0'.padStart(digitsFor(total), '0')} al {String(total - 1).padStart(digitsFor(total), '0')} · {digitsFor(total)} cifras. Podés cambiarla cuando quieras, siempre que no quites números ya reservados o vendidos.</span>
+          <span className="mt-1 block text-xs text-muted">Del {'0'.padStart(digitsFor(total), '0')} al {String(total - 1).padStart(digitsFor(total), '0')} · {digitsFor(total)} cifras. Podés cambiarla cuando quieras, siempre que no quites números ya elegidos.</span>
         </label>
         <label className="block text-sm">Inicio (hora Argentina)
           <input name="starts_at" type="datetime-local" required defaultValue={toInputDateTime(initial?.starts_at ?? now.toISOString())} className={inputCls} />
         </label>
-        <label className="block text-sm">Cierre de ventas (hora Argentina)
+        <label className="block text-sm">Se puede elegir hasta (hora Argentina)
           <input name="closes_at" type="datetime-local" required defaultValue={toInputDateTime(initial?.closes_at ?? inWeek.toISOString())} className={inputCls} />
         </label>
       </div>
@@ -111,12 +106,10 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
         </div>
       </fieldset>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block text-sm">Vencimiento de reserva (min)
-          <input name="reservation_minutes" type="number" min="5" max="2880" defaultValue={initial?.reservation_minutes ?? 60} className={inputCls} />
-        </label>
-        <label className="block text-sm">Máx. números por reserva
-          <input name="max_numbers_per_reservation" type="number" min="1" max="1000" defaultValue={initial?.max_numbers_per_reservation ?? 20} className={inputCls} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="block text-sm">Números por persona
+          <input name="max_numbers_per_reservation" type="number" min="1" max="1000" defaultValue={initial?.max_numbers_per_reservation ?? 1} className={inputCls} />
+          <span className="mt-1 block text-xs text-muted">Cuántos números puede elegir cada participante en este sorteo.</span>
         </label>
         <label className="block text-sm">Estado
           <select name="status" defaultValue={initial?.status ?? 'draft'} className={inputCls}>
@@ -125,8 +118,8 @@ function RaffleForm({ initial, products, onDone }: { initial?: Raffle; products:
         </label>
       </div>
       <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" name="is_demo" defaultChecked={initial?.is_demo ?? true} className="mt-1" />
-        <span><b>Sorteo de prueba (demostración).</b> Permite probar reservas sin cobros reales. Un sorteo real solo acepta reservas cuando los cobros están habilitados con autorización.</span>
+        <input type="checkbox" name="is_demo" defaultChecked={initial?.is_demo ?? false} className="mt-1" />
+        <span><b>Sorteo de prueba.</b> Se muestra con la etiqueta "Prueba" para que nadie lo confunda con un sorteo real.</span>
       </label>
       {err && <Notice kind="error">{err}</Notice>}
       <div className="flex gap-2">
@@ -143,7 +136,7 @@ function RaffleStats({ id }: { id: string }) {
   if (!s) return null
   return (
     <p className="mt-2 text-xs text-muted">
-      <span className="text-sold">{s.sold} vendidos</span> · <span className="text-yellow-700">{s.reserved} reservados</span> · <span className="text-free">{s.available} disponibles</span> · cobrado {pesos(Number(s.collected_verified))} · pendiente {pesos(Number(s.pending_amount))}
+      <span className="text-sold">{s.taken} elegidos</span> · <span className="text-free">{s.available} libres</span> · {s.participants} participantes
     </p>
   )
 }
@@ -185,7 +178,7 @@ export default function Raffles() {
                     {r.name} <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-bold ${badge[r.status]}`}>{statusLabels[r.status]}</span>
                     {r.is_demo && <span className="ml-1 rounded-full bg-gold/30 px-2 py-0.5 text-xs font-bold text-brand-900">Prueba</span>}
                   </p>
-                  <p className="text-muted">{pesos(r.price_per_number)} por número · {r.total_numbers} números · cierra {fecha(r.closes_at)}</p>
+                  <p className="text-muted">Gratis · {r.total_numbers} números · hasta {r.max_numbers_per_reservation} por persona · cierra {fecha(r.closes_at)}</p>
                   <p className="text-muted">Oficial: {r.official_draw_date ? r.official_draw_date.split('-').reverse().join('/') : 'sin fecha'} · {r.official_draw_slot ? slotLabels[r.official_draw_slot] : 'sin horario'}</p>
                 </div>
                 <div className="flex gap-3 text-sm font-semibold">

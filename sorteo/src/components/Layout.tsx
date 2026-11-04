@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { Logo } from './Logo'
-import DemoBanner from './DemoBanner'
 import { useAuth } from '../lib/auth'
 import { useBrand } from '../lib/brand'
 
@@ -26,7 +25,7 @@ export default function Layout() {
   const { pathname } = useLocation()
   const { isAdmin, viewAsBuyer, setViewAsBuyer } = useAuth()
   const { paused, pausedMessage } = useBrand()
-  // El comprador solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
+  // El participante solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
   // El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
   const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin : n.to === '/mis-numeros' ? !isAdmin : true))
   useEffect(() => {
@@ -34,11 +33,10 @@ export default function Layout() {
   }, [pathname])
   return (
     <div className="flex min-h-screen flex-col">
-      <DemoBanner />
       {paused && <div className="bg-sold px-4 py-2 text-center text-sm font-semibold text-white">{pausedMessage || 'La app está pausada momentáneamente.'}</div>}
       {viewAsBuyer && (
         <div className="flex items-center justify-center gap-3 bg-ink px-4 py-2 text-sm text-white">
-          <span>Estás viendo la app como un comprador.</span>
+          <span>Estás viendo la app como un participante.</span>
           <button onClick={() => setViewAsBuyer(false)} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ink">Volver a mi panel</button>
         </div>
       )}

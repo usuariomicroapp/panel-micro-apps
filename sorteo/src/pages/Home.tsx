@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import RaffleImage from '../components/RaffleImage'
 import { useAuth } from '../lib/auth'
-import { fecha, pesos } from '../lib/format'
+import { fecha } from '../lib/format'
 import { countView, usePublicRaffles } from '../lib/publicRaffles'
 
 export default function Home() {
@@ -30,13 +30,13 @@ export default function Home() {
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {data.map((r) => {
           const c = countView(r)
-          const pct = Math.round((c.paid / r.totalNumbers) * 100)
+          const pct = Math.round(((c.paid + c.reserved) / r.totalNumbers) * 100)
           return (
             <Link key={r.id} to={`/sorteo/${r.id}`} className="group overflow-hidden rounded-3xl border border-line bg-surface shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
               <div className="relative">
                 <RaffleImage raffle={r} className="aspect-[16/10] w-full" />
                 <div className="absolute left-3 top-3 flex gap-1.5">
-                  {r.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Demostración</span>}
+                  {r.isDemo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Prueba</span>}
                   {r.status !== 'active' && <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-bold text-white">{r.statusLabel}</span>}
                 </div>
               </div>
@@ -45,16 +45,16 @@ export default function Home() {
                 <p className="text-sm text-muted">{r.prize}</p>
                 <div className="mt-4 flex items-end justify-between">
                   <div>
-                    <p className="text-xs text-muted">Por número</p>
-                    <p className="text-2xl font-extrabold text-brand-700">{pesos(r.pricePerNumber)}</p>
+                    <p className="text-xs text-muted">Participar</p>
+                    <p className="text-2xl font-extrabold text-free">Gratis</p>
                   </div>
                   <p className="text-right text-xs text-muted">Cierra<br /><span className="font-semibold text-ink">{fecha(r.closesAt)}</span></p>
                 </div>
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-line">
                   <div className="h-full rounded-full bg-sold" style={{ width: `${pct}%` }} />
                 </div>
-                <p className="mt-1.5 text-sm text-muted">{c.paid} vendidos · {c.available} libres</p>
-                <span className="mt-4 block rounded-2xl bg-brand-600 py-3.5 text-center text-lg font-bold text-white group-hover:bg-brand-700">{r.status === 'active' ? 'Elegir mis números' : 'Ver sorteo'}</span>
+                <p className="mt-1.5 text-sm text-muted">{c.paid + c.reserved} elegidos · {c.available} libres</p>
+                <span className="mt-4 block rounded-2xl bg-brand-600 py-3.5 text-center text-lg font-bold text-white group-hover:bg-brand-700">{r.status === 'active' ? 'Elegir mi número' : 'Ver sorteo'}</span>
               </div>
             </Link>
           )
