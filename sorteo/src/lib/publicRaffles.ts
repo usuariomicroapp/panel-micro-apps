@@ -22,10 +22,11 @@ export interface RaffleView {
   isDemo: boolean
   status: RaffleStatus
   statusLabel: string
+  reservationMinutes: number
 }
 
 const fromDemo = (r: DemoRaffle): RaffleView => ({
-  ...r, unsold: '', photos: [], isDemo: true, status: 'active', statusLabel: 'Ejemplo',
+  ...r, unsold: '', photos: [], isDemo: true, status: 'active', statusLabel: 'Ejemplo', reservationMinutes: 60,
 })
 
 type Row = Raffle & { products: { name: string; prize_info: string } | null }
@@ -53,6 +54,7 @@ const toView = (r: Row, photos: string[], states: Record<number, NumberState>): 
   isDemo: r.is_demo,
   status: r.status,
   statusLabel: statusLabels[r.status],
+  reservationMinutes: r.reservation_minutes,
 })
 
 const select = '*, products(name, prize_info)'

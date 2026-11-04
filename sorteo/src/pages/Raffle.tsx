@@ -1,15 +1,23 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import NumberGrid, { GridLegend } from '../components/NumberGrid'
 import RaffleImage from '../components/RaffleImage'
 import ComingSoon from '../components/ComingSoon'
 import HowToPay from '../components/HowToPay'
 import { fecha, pad, pesos } from '../lib/format'
 import { countView, usePublicRaffle } from '../lib/publicRaffles'
+import { useAuth } from '../lib/auth'
+import { supabase } from '../lib/supabase'
+import { useBrand } from '../lib/brand'
 
 export default function Raffle() {
   const { id } = useParams()
-  const { loading, error, data: raffle } = usePublicRaffle(id)
+  const { loading, error, data: raffle, reload } = usePublicRaffle(id)
+  const { session } = useAuth()
+  const { paused } = useBrand()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [reserveErr, setReserveErr] = useState('')
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [search, setSearch] = useState('')
   const [searchMsg, setSearchMsg] = useState('')
@@ -40,6 +48,19 @@ export default function Raffle() {
     if (!selected.has(n)) toggle(n)
     setSearchMsg(`¡Listo! Elegiste el ${pad(n, raffle.digits)}.`)
     setSearch('')
+  }
+  const isExample = raffle.id.startsWith('ejemplo-')
+  const reserve = async () => {
+    if (!supabase || !chosen.length) return
+    setBusy(true); setReserveErr('')
+    const { data, error: err } = await supabase.rpc('reserve_numbers', { p_raffle: raffle.id, p_numbers: chosen })
+    setBusy(false)
+    if (err) {
+      setReserveErr(/Failed to fetch|NetworkError/i.test(err.message) ? 'No hay conexión. Probá de nuevo.' : err.message)
+      if (/disponible/.test(err.message)) { setSelected(new Set()); reload() }
+      return
+    }
+    navigate(`/mis-numeros?nueva=${(data as { id: string }).id}`)
   }
   const chosen = [...selected].sort((a, b) => a - b)
   const total = chosen.length * raffle.pricePerNumber
@@ -97,8 +118,8 @@ export default function Raffle() {
       </div>
 
       <aside className="lg:sticky lg:top-24 lg:self-start">
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-sm">
-          <h2 className="font-bold">Tu selección</h2>
+        <div id="tu-seleccion" className="rounded-3xl border border-line bg-surface p-5 shadow-sm">
+          <h2 className="text-lg font-bold">Tu selección</h2>
           {chosen.length === 0 ? (
             <p className="mt-2 text-sm text-muted">Tocá uno o más números verdes de la grilla.</p>
           ) : (
@@ -115,10 +136,23 @@ export default function Raffle() {
             <span className="text-2xl font-extrabold">{pesos(total)}</span>
           </div>
           {chosen.length > 0 && open && !raffle.id.startsWith('ejemplo-') && <HowToPay total={total} isDemo={raffle.isDemo} />}
-          <button disabled className="mt-4 w-full cursor-not-allowed rounded-2xl bg-brand-600/40 py-3.5 font-bold text-white">Reservar números</button>
-          <div className="mt-3">
-            <ComingSoon stage={6}>{open ? "Las reservas se activan en la próxima etapa. Hoy solo se calcula el total." : "Este sorteo ya no recibe reservas."}</ComingSoon>
-          </div>
+          {reserveErr && <p role="alert" className="mt-4 rounded-xl bg-sold/10 p-3 text-base text-sold">{reserveErr}</p>}
+          {!open ? (
+            <p className="mt-4 rounded-xl bg-canvas p-3 text-base">Este sorteo ya no recibe reservas.</p>
+          ) : isExample ? (
+            <div className="mt-3"><ComingSoon stage={6}>Este es un sorteo de ejemplo: no se puede reservar.</ComingSoon></div>
+          ) : paused ? (
+            <p className="mt-4 rounded-xl bg-sold/10 p-3 text-base text-sold">La app está pausada: por ahora no se puede reservar.</p>
+          ) : !session ? (
+            <Link to="/perfil" className="mt-4 block w-full rounded-2xl bg-brand-600 py-4 text-center text-lg font-bold text-white">Ingresá para reservar</Link>
+          ) : (
+            <>
+              <button onClick={reserve} disabled={busy || chosen.length === 0} className="mt-4 w-full rounded-2xl bg-brand-600 py-4 text-lg font-bold text-white disabled:cursor-not-allowed disabled:bg-brand-600/40">
+                {busy ? 'Reservando…' : chosen.length ? `Reservar ${chosen.length === 1 ? 'número' : `${chosen.length} números`}` : 'Reservar números'}
+              </button>
+              <p className="mt-2 text-sm text-muted">Tenés {raffle.reservationMinutes} minutos para pagar y mandar el comprobante. Si no, los números vuelven a quedar libres.</p>
+            </>
+          )}
         </div>
       </aside>
 
@@ -126,7 +160,9 @@ export default function Raffle() {
         <div className="fixed inset-x-0 bottom-[68px] z-10 border-t border-line bg-surface px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,.06)] lg:hidden">
           <div className="mx-auto flex max-w-6xl items-center justify-between">
             <span className="text-sm"><b>{chosen.length}</b> números · <b>{pesos(total)}</b></span>
-            <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-700">Reservas en Etapa 6</span>
+            {open && session && !isExample && !paused
+              ? <button onClick={reserve} disabled={busy} className="rounded-xl bg-brand-600 px-4 py-2.5 text-base font-bold text-white disabled:opacity-50">{busy ? 'Reservando…' : 'Reservar'}</button>
+              : <a href="#tu-seleccion" className="rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-700">Ver selección</a>}
           </div>
         </div>
       )}

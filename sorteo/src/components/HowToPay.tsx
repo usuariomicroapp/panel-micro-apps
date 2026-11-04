@@ -41,7 +41,7 @@ export default function HowToPay({ total, isDemo }: { total: number; isDemo: boo
   return (
     <div className="mt-5 rounded-2xl border border-line p-4">
       <h3 className="text-lg font-bold">Cómo pagar</h3>
-      <p className="mt-1 text-base">Transferí <b>{pesos(total)}</b> a:</p>
+      <p className="mt-1 text-base">Total a transferir: <b>{pesos(total)}</b></p>
       {!session ? (
         <p className="mt-2 text-sm text-muted"><Link to="/perfil" className="font-semibold text-brand-600">Ingresá</Link> para ver los datos de la cuenta.</p>
       ) : methods === null ? (

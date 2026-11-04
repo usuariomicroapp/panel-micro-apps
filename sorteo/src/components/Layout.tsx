@@ -8,6 +8,7 @@ import { useBrand } from '../lib/brand'
 const nav = [
   { to: '/', label: 'Sorteos', icon: 'M4 6h16M4 12h16M4 18h10' },
   { to: '/premios', label: 'Premios', icon: 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z' },
+  { to: '/mis-numeros', label: 'Mis números', icon: 'M7 3h10a2 2 0 012 2v16l-7-3-7 3V5a2 2 0 012-2z' },
   { to: '/resultados', label: 'Resultados', icon: 'M5 13l4 4L19 7' },
   { to: '/invitar', label: 'Invitar', icon: 'M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13' },
   { to: '/perfil', label: 'Mi perfil', icon: 'M12 12a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0' },
@@ -26,7 +27,8 @@ export default function Layout() {
   const { isAdmin, viewAsBuyer, setViewAsBuyer } = useAuth()
   const { paused, pausedMessage } = useBrand()
   // El comprador solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
-  const items = nav.filter((n) => n.to !== '/invitar' || isAdmin)
+  // El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
+  const items = nav.filter((n) => (n.to === '/invitar' ? isAdmin : n.to === '/mis-numeros' ? !isAdmin : true))
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [pathname])
