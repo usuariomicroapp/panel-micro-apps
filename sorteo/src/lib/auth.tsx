@@ -10,8 +10,14 @@ export interface Profile {
   email: string
   role: 'admin' | 'participant'
   is_owner?: boolean
+  organizer_until?: string | null
   created_at: string
 }
+
+// Fecha de hoy en Argentina (AAAA-MM-DD).
+const todayAR = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
+// Días que le quedan de permiso a un organizador (null = sin vencimiento; negativo = vencido).
+export const daysLeft = (until?: string | null) => (until ? Math.round((Date.parse(until) - Date.parse(todayAR())) / 86400_000) : null)
 
 interface AuthState {
   ready: boolean
@@ -73,7 +79,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const isOwner = !!profile?.is_owner
-  const canManage = isOwner || profile?.role === 'admin'
+  const left = daysLeft(profile?.organizer_until)
+  const canManage = isOwner || (profile?.role === 'admin' && (left === null || left >= 0))
 
   return (
     <AuthContext.Provider value={{

@@ -126,9 +126,30 @@ function Backup() {
 // Link para que los clientes del dueño se sumen como organizadores.
 function InviteOrganizers() {
   const { name } = useBrand()
-  const link = `${window.location.origin}/#/perfil`
-  const message = `¡Hola! Te invito a usar ${name} para organizar tus sorteos.\n\n1. Entrá a este link y creá tu cuenta:\n${link}\n\n2. Avisame por acá y te habilito el panel de organizador para que cargues tus sorteos.`
-  return <ShareBox title="Sumar organizadores" text="Mandale este link a tus clientes. Cuando creen su cuenta, abrí Cuentas y tocá «Hacer organizador»." message={message} link={link} />
+  const [code, setCode] = useState<string | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    supabase!.from('owner_invite').select('code').eq('id', 1).maybeSingle().then(({ data, error }) => {
+      if (error) setErr(/owner_invite/.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message)
+      setCode((data as { code: string } | null)?.code ?? '')
+    })
+  }, [])
+  const reset = async () => {
+    if (!window.confirm('¿Cambiar el link? El link viejo deja de funcionar. Quienes ya son organizadores siguen igual.')) return
+    const { data, error } = await supabase!.rpc('owner_reset_invite')
+    if (error) setErr(error.message); else setCode(data as string)
+  }
+  if (code === null) return null
+  if (!code) return <Notice kind="error">{err || 'No se pudo cargar el link para organizadores.'}</Notice>
+  const link = `${window.location.origin}/?unirme=${code}#/perfil`
+  const message = `¡Hola! Te invito a usar ${name} para organizar tus sorteos.\n\nEntrá a este link y creá tu cuenta. Vas a tener tu propio panel para cargar tus productos y sorteos, con 20 días de prueba:\n${link}`
+  return (
+    <div className="space-y-2">
+      <ShareBox title="Sumar organizadores" text="Quien se registre con este link queda como organizador con 20 días de prueba. Después lo habilitás desde Mis clientes." message={message} link={link} />
+      <button onClick={reset} className="w-full text-center text-xs text-muted underline">Cambiar el link por uno nuevo</button>
+      {err && <Notice kind="error">{err}</Notice>}
+    </div>
+  )
 }
 
 export default function Owner() {

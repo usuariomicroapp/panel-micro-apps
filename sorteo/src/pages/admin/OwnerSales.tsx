@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Card, Notice, inputCls, primaryCls } from '../../components/ui'
 import { pesos } from '../../lib/format'
-import type { Profile } from '../../lib/auth'
+import { daysLeft, type Profile } from '../../lib/auth'
 
 interface Sale { id: string; client_id: string | null; client_name: string; concept: string; amount: number; sale_date: string; status: 'pagado' | 'pendiente'; note: string }
 
@@ -22,11 +22,24 @@ export default function OwnerSales() {
 
   const loadSales = () => supabase!.from('owner_sales').select('*').order('sale_date', { ascending: false }).order('created_at', { ascending: false })
     .then(({ data, error }) => { if (error) setErr(missing(error.message)); setSales((data ?? []) as Sale[]) })
+  const loadClients = () => supabase!.from('profiles').select('*').eq('role', 'admin').eq('is_owner', false).order('created_at', { ascending: false })
+    .then(({ data }) => setClients((data ?? []) as Profile[]))
   useEffect(() => {
-    supabase!.from('profiles').select('*').eq('role', 'admin').eq('is_owner', false).order('created_at', { ascending: false })
-      .then(({ data }) => setClients((data ?? []) as Profile[]))
+    void loadClients()
     void loadSales()
   }, [])
+
+  // Habilitar o cortar el panel de un organizador.
+  const setUntil = async (c: Profile, until: string | null, text: string) => {
+    if (!window.confirm(text)) return
+    const { error } = await supabase!.rpc('owner_set_organizer_until', { p_user: c.id, p_until: until })
+    if (error) setErr(/owner_set_organizer_until/.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message)
+    void loadClients()
+  }
+  const plus = (c: Profile, days: number) => {
+    const base = c.organizer_until && (daysLeft(c.organizer_until) ?? 0) >= 0 ? Date.parse(c.organizer_until) : Date.parse(today())
+    return new Date(base + days * 86400_000).toISOString().slice(0, 10)
+  }
 
   const now = month(today())
   const t = useMemo(() => {
@@ -68,21 +81,29 @@ export default function OwnerSales() {
       </div>
       {err && <Notice kind="error">{err}</Notice>}
 
-      <Card title="Mis clientes" collapsible hint={clients ? `${clients.length} organizadores` : undefined}>
+      <Card title="Mis clientes" collapsible hint={clients ? `${clients.length} organizadores${clients.some((c) => (daysLeft(c.organizer_until) ?? 0) < 0) ? ` · ${clients.filter((c) => (daysLeft(c.organizer_until) ?? 0) < 0).length} cortados` : ''}` : undefined}>
         {!clients ? <p className="text-muted">Cargando…</p> : !clients.length ? (
           <p className="text-sm text-muted">Todavía no tenés organizadores. Compartí el link de «Sumar organizadores» y después habilitalos en Cuentas.</p>
         ) : (
           <ul className="divide-y divide-line">
             {clients.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <div className="min-w-0">
-                  <p className="font-semibold">{who(c)}</p>
-                  <p className="truncate text-muted">{c.email}{c.phone && <> · {c.phone}</>}</p>
-                  <p className="text-xs text-muted">Cliente desde {dmy(c.created_at.slice(0, 10))}</p>
+              <li key={c.id} className="py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{who(c)}</p>
+                    <p className="truncate text-muted">{c.email}{c.phone && <> · {c.phone}</>}</p>
+                    <p className="text-xs text-muted">Cliente desde {dmy(c.created_at.slice(0, 10))}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-bold text-free">{pesos(paidBy(c.id))}</p>
+                    {owesBy(c.id) > 0 && <p className="text-xs font-bold text-held">Debe {pesos(owesBy(c.id))}</p>}
+                  </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-bold text-free">{pesos(paidBy(c.id))}</p>
-                  {owesBy(c.id) > 0 && <p className="text-xs font-bold text-held">Debe {pesos(owesBy(c.id))}</p>}
+                <Access c={c} />
+                <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold">
+                  <button onClick={() => setUntil(c, plus(c, 30), `¿Darle 30 días más a ${who(c)}?`)} className="rounded-full bg-free/15 px-3 py-1.5 text-free">+30 días</button>
+                  {c.organizer_until && <button onClick={() => setUntil(c, null, `¿Dejar a ${who(c)} sin vencimiento?`)} className="rounded-full bg-brand-100 px-3 py-1.5 text-brand-700">Sin vencimiento</button>}
+                  {(daysLeft(c.organizer_until) ?? 0) >= 0 && <button onClick={() => setUntil(c, new Date(Date.parse(today()) - 86400_000).toISOString().slice(0, 10), `¿Cortarle el panel a ${who(c)}? Sus datos quedan guardados.`)} className="rounded-full bg-sold/10 px-3 py-1.5 text-sold">Cortar</button>}
                 </div>
               </li>
             ))}
@@ -131,6 +152,13 @@ export default function OwnerSales() {
       </Card>
     </>
   )
+}
+
+function Access({ c }: { c: Profile }) {
+  const left = daysLeft(c.organizer_until)
+  if (left === null) return <p className="mt-2 text-xs font-bold text-free">ACTIVO · sin vencimiento</p>
+  if (left < 0) return <p className="mt-2 text-xs font-bold text-sold">CORTADO · venció el {dmy(c.organizer_until!)}</p>
+  return <p className="mt-2 text-xs font-bold text-held">ACTIVO hasta el {dmy(c.organizer_until!)} · {left === 1 ? 'queda 1 día' : `quedan ${left} días`}</p>
 }
 
 function Stat({ label, value, sub, gold, warn }: { label: string; value: string; sub: string; gold?: boolean; warn?: boolean }) {
