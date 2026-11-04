@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { myId } from '../../lib/mine'
 import { supabase } from '../../lib/supabase'
 import { useBrand, orgLink } from '../../lib/brand'
@@ -38,7 +39,7 @@ export default function DrawDay() {
 
   if (!raffles) return <p className="py-10 text-center text-muted">Cargando…</p>
   if (loadError) return <Notice kind="error">{loadError}</Notice>
-  if (!raffles.length) return <Card title="Cargar día del sorteo"><p className="text-muted">Primero creá un sorteo en la pestaña Sorteos.</p></Card>
+  if (!raffles.length) return <Card title="Cargar día del sorteo"><p className="text-muted">Primero creá un sorteo.</p><Link to="/admin?tab=sorteos" className={`${primaryCls} mt-3 block text-center`}>Ir a Sorteos</Link></Card>
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">

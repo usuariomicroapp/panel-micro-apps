@@ -163,7 +163,13 @@ export default function Raffles() {
 
   return (
     <Card title="Sorteos" action={editing === null && <button onClick={() => setEditing('new')} disabled={!products.length} className="text-sm font-semibold text-brand-600 disabled:text-muted">+ Nuevo sorteo</button>}>
-      {items && !products.length && <p className="mb-3 text-sm text-muted">Primero creá un producto en la pestaña Productos.</p>}
+      {items && !products.length && (
+        <div className="mb-4 rounded-2xl border border-gold/40 bg-gold/10 p-4">
+          <p className="font-semibold">Paso 1: cargá el premio (producto) con sus fotos.</p>
+          <p className="mt-1 text-sm text-muted">Después volvés acá y creás el sorteo con ese premio.</p>
+          <Link to="/admin?tab=productos" className={`${primaryCls} mt-3 block text-center`}>Cargar mi primer producto</Link>
+        </div>
+      )}
       {editing === 'new' && <div className="mb-4"><RaffleForm products={products} onDone={() => { setEditing(null); void load() }} /></div>}
       {!items ? <p className="text-muted">Cargando…</p> : items.length === 0 && editing !== 'new' ? (
         <p className="text-sm text-muted">Todavía no hay sorteos.</p>

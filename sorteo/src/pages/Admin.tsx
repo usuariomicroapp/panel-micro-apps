@@ -15,10 +15,10 @@ import ShareBox, { useInviteMessage } from '../components/ShareBox'
 
 const baseTabs = [
   { id: 'resumen', label: 'Resumen' },
+  { id: 'productos', label: 'Productos' },
   { id: 'sorteos', label: 'Sorteos' },
   { id: 'dia', label: 'Día del sorteo' },
   { id: 'participantes', label: 'Participantes' },
-  { id: 'productos', label: 'Productos' },
   { id: 'configuracion', label: 'Configuración' },
   { id: 'historial', label: 'Historial' },
 ] as const
@@ -76,10 +76,10 @@ export default function Admin() {
           </button>
         </div>
       </div>
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 pt-1">
+      <nav className="flex flex-wrap gap-2">
         {baseTabs.map((t) => (
           <button key={t.id} onClick={() => setParams({ tab: t.id })}
-            className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-extrabold ${tab === t.id ? 'btn-gold' : 'card text-muted'}`}>
+            className={`rounded-full px-3.5 py-2 text-sm font-extrabold ${tab === t.id ? 'btn-gold' : 'card text-ink'}`}>
             {t.label}
           </button>
         ))}
