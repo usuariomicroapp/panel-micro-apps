@@ -52,3 +52,6 @@ begin
 end $$;
 revoke execute on function owner_install_stats() from public, anon;
 grant execute on function owner_install_stats() to authenticated;
+
+-- Que la app vea las funciones nuevas enseguida.
+notify pgrst, 'reload schema';

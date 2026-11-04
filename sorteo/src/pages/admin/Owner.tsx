@@ -160,7 +160,7 @@ function Installs() {
   const [err, setErr] = useState('')
   useEffect(() => {
     supabase!.rpc('owner_install_stats').then(({ data, error }) => {
-      if (error) setErr(/owner_install_stats|schema cache|function/i.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : error.message)
+      if (error) setErr(/Could not find the function/i.test(error.message) ? 'Falta actualizar la base: pegá el archivo de actualización en Supabase (SQL Editor).' : `No se pudieron cargar las instalaciones: ${error.message}`)
       else setS(((data ?? []) as InstallStats[])[0] ?? null)
     })
   }, [])
