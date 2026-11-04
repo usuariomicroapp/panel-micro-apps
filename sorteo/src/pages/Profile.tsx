@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import ComingSoon from '../components/ComingSoon'
 import { InstallCard, PushCard } from '../components/AppSetup'
 import { RECOVERY_KEY, useAuth } from '../lib/auth'
@@ -175,14 +175,9 @@ function ProfileCard() {
 
 // Para el organizador: acceso al panel y ver como participante.
 function ManagerTools() {
-  const { setViewAsBuyer } = useAuth()
-  const navigate = useNavigate()
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <Link to="/admin" className="rounded-2xl bg-night py-3.5 text-center font-bold text-white">Ir a mi panel</Link>
-        <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-2xl border border-line py-3.5 font-semibold text-brand-700">Ver como participante</button>
-      </div>
+      <Link to="/admin" className="block rounded-2xl bg-night py-3.5 text-center font-bold text-white">Ir a mi panel</Link>
     </div>
   )
 }
