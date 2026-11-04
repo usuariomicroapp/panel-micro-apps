@@ -37,7 +37,7 @@ export default function Admin() {
     return (
       <div className="mx-auto max-w-md py-16 text-center">
         <p className="text-muted">Estás viendo la app como participante.</p>
-        <button onClick={() => setViewAsBuyer(false)} className="mt-6 rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white">Volver a mi panel</button>
+        <button onClick={() => setViewAsBuyer(false)} className="mt-6 rounded-2xl btn-gold px-6 py-3 font-bold">Volver a mi panel</button>
       </div>
     )
   }
@@ -46,7 +46,7 @@ export default function Admin() {
       <div className="mx-auto max-w-md py-16 text-center">
         <h1 className="text-xl font-extrabold">Panel privado</h1>
         <p className="mt-2 text-muted">Solo el administrador puede entrar acá.</p>
-        <Link to="/perfil" className="mt-6 inline-block rounded-2xl bg-brand-600 px-6 py-3 font-bold text-white">Ingresar</Link>
+        <Link to="/perfil" className="mt-6 inline-block rounded-2xl btn-gold px-6 py-3 font-bold">Ingresar</Link>
       </div>
     )
   }
@@ -54,18 +54,18 @@ export default function Admin() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm font-semibold text-brand-600">Panel privado</p>
+        <p className="label text-gold-dark">{isOwner ? 'Panel del dueño' : 'Panel del organizador'}</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-extrabold">{isOwner ? 'Administración (dueño)' : 'Administración'}</h1>
-          <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="rounded-full border border-line px-4 py-2 text-sm font-semibold text-brand-700">
+          <h1 className="font-display text-3xl font-bold">Administración</h1>
+          <button onClick={() => { setViewAsBuyer(true); navigate('/') }} className="card rounded-full px-4 py-2 text-sm font-bold">
             Ver como participante
           </button>
         </div>
       </div>
-      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      <nav className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-2 pt-1">
         {tabs.map((t) => (
           <button key={t.id} onClick={() => setParams({ tab: t.id })}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${tab === t.id ? 'bg-ink text-white' : 'bg-surface text-muted border border-line'}`}>
+            className={`shrink-0 rounded-full px-4 py-2.5 text-sm font-extrabold ${tab === t.id ? 'btn-gold' : 'card text-muted'}`}>
             {t.label}
           </button>
         ))}

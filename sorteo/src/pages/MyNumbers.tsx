@@ -49,7 +49,7 @@ export default function MyNumbers() {
       <div className="mx-auto max-w-md py-16 text-center">
         <h1 className="text-2xl font-extrabold">Mis números</h1>
         <p className="mt-2 text-lg text-muted">Ingresá para ver los números que elegiste.</p>
-        <Link to="/perfil" className="mt-6 inline-block rounded-2xl bg-brand-600 px-8 py-4 text-lg font-bold text-white">Ingresar</Link>
+        <Link to="/perfil" className="mt-6 inline-block rounded-2xl btn-gold px-8 py-4 text-lg font-bold">Ingresar</Link>
       </div>
     )
   }
@@ -65,7 +65,7 @@ export default function MyNumbers() {
       {rows === null ? <p className="text-muted">Cargando…</p> : mine.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-line bg-surface p-8 text-center">
           <p className="text-lg">Todavía no elegiste números.</p>
-          <Link to="/" className="mt-4 inline-block rounded-2xl bg-brand-600 px-6 py-3.5 text-lg font-bold text-white">Ver sorteos</Link>
+          <Link to="/" className="mt-4 inline-block rounded-2xl btn-gold px-6 py-3.5 text-lg font-bold">Ver sorteos</Link>
         </div>
       ) : mine.map((r) => {
         const digits = r.raffles?.digits ?? 2
@@ -75,10 +75,10 @@ export default function MyNumbers() {
             {r.id === fresh && <p className="mb-3 rounded-xl bg-free/10 p-3 text-lg font-semibold text-free">¡Listo! Ya estás participando.</p>}
             <div className="flex flex-wrap items-start justify-between gap-2">
               <Link to={`/sorteo/${r.raffle_id}`} className="text-lg font-bold">{r.raffles?.name ?? 'Sorteo'}</Link>
-              {r.raffles?.is_demo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-ink">Prueba</span>}
+              {r.raffles?.is_demo && <span className="rounded-full bg-gold px-2.5 py-0.5 text-xs font-bold text-night">Prueba</span>}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {r.numbers.map((n) => <span key={n} className="rounded-xl bg-brand-600 px-4 py-2 text-2xl font-bold tabular-nums text-white">{pad(n, digits)}</span>)}
+              {r.numbers.map((n) => <span key={n} className="rounded-xl bg-mine px-4 py-2 text-2xl font-bold tabular-nums text-white shadow-[inset_0_1px_0_#fff5,0_3px_0_#142c85]">{pad(n, digits)}</span>)}
             </div>
             <p className="mt-3 text-base">Elegido el {fecha(r.created_at)}.</p>
             {r.raffles?.official_draw_date && <p className="text-base">Se sortea el {r.raffles.official_draw_date.split('-').reverse().join('/')}{r.raffles.official_draw_slot && ` a las ${slotTimes[r.raffles.official_draw_slot]}`}. Si ganás, te avisamos acá en la app y el organizador se comunica con vos.</p>}

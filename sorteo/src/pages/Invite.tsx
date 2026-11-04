@@ -57,7 +57,7 @@ export default function Invite() {
   const channels = [
     { label: 'WhatsApp', href: `https://wa.me/?text=${enc(message)}`, cls: 'bg-free text-white' },
     { label: 'Telegram', href: `https://t.me/share/url?url=${enc(app)}&text=${enc(message.replace(app, '').trim())}`, cls: 'bg-[#229ED9] text-white' },
-    { label: 'SMS', href: `sms:?&body=${enc(message)}`, cls: 'bg-ink text-white' },
+    { label: 'SMS', href: `sms:?&body=${enc(message)}`, cls: 'bg-night text-white' },
     { label: 'Correo', href: `mailto:?subject=${enc(`Te invito a ${brand}`)}&body=${enc(message)}`, cls: 'bg-surface text-ink border border-line' },
   ]
 
@@ -104,7 +104,7 @@ export default function Invite() {
 
 function LinkBox({ letter, title, value, empty, copied, onCopy }: { letter: string; title: string; value: string; empty?: string; copied: boolean; onCopy: () => void }) {
   return (
-    <div className="rounded-3xl border border-line bg-surface p-5">
+    <div className="card rounded-3xl p-5">
       <p className="text-xs font-semibold text-muted">{letter} · {title.toUpperCase()}</p>
       {value ? (
         <>

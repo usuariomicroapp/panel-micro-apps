@@ -33,7 +33,7 @@ export default function Notices() {
           <p className="text-lg font-bold">{n.kind === 'ganador' && '🎉 '}{n.title}</p>
           {n.body && <p className="mt-1 text-base">{n.body}</p>}
           <div className="mt-3 flex flex-wrap gap-3">
-            {n.link && n.link !== pathname && <Link to={n.link} onClick={() => dismiss(n.id)} className="rounded-xl bg-ink px-4 py-2 font-semibold text-white">Ver</Link>}
+            {n.link && n.link !== pathname && <Link to={n.link} onClick={() => dismiss(n.id)} className="rounded-xl bg-night px-4 py-2 font-semibold text-white">Ver</Link>}
             <button onClick={() => dismiss(n.id)} className="rounded-xl border border-line bg-surface px-4 py-2 font-semibold">Entendido</button>
           </div>
         </div>

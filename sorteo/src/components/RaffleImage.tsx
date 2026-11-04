@@ -19,10 +19,10 @@ export default function RaffleImage({ raffle, className = '', gallery = false }:
           {many && (
             <>
               <button type="button" onClick={() => setI((i - 1 + photos.length) % photos.length)} aria-label="Foto anterior"
-                className="absolute left-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full bg-white/85 text-2xl font-bold text-ink shadow">‹</button>
+                className="absolute left-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full bg-white/85 text-2xl font-bold text-night shadow">‹</button>
               <button type="button" onClick={() => setI((i + 1) % photos.length)} aria-label="Foto siguiente"
-                className="absolute right-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full bg-white/85 text-2xl font-bold text-ink shadow">›</button>
-              <span className="absolute bottom-2 right-2 rounded-full bg-ink/70 px-2.5 py-0.5 text-sm font-semibold text-white">{i + 1} de {photos.length}</span>
+                className="absolute right-2 top-1/2 h-11 w-11 -translate-y-1/2 rounded-full bg-white/85 text-2xl font-bold text-night shadow">›</button>
+              <span className="absolute bottom-2 right-2 rounded-full bg-night/70 px-2.5 py-0.5 text-sm font-semibold text-white">{i + 1} de {photos.length}</span>
             </>
           )}
         </div>
@@ -32,8 +32,8 @@ export default function RaffleImage({ raffle, className = '', gallery = false }:
   }
   if (raffle.art) return <PrizeArt kind={raffle.art} className={className} />
   return (
-    <div className={`flex items-center justify-center bg-gradient-to-br from-brand-900 to-brand-600 text-white ${className}`}>
-      <span className="px-4 text-center text-lg font-bold">{raffle.prize || raffle.name}</span>
+    <div className={`flex items-center justify-center bg-[radial-gradient(70%_60%_at_50%_35%,#3a4a86_0,#151d3d_60%,#0b1022_100%)] text-white ${className}`}>
+      <span className="gold-text px-4 text-center font-display text-xl font-bold">{raffle.prize || raffle.name}</span>
     </div>
   )
 }

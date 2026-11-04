@@ -1,5 +1,5 @@
 // SORTEO · service worker: abre rápido, funciona con mala señal y muestra los avisos push.
-const CACHE = 'sorteo-v2'
+const CACHE = 'sorteo-v3'
 const SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/favicon.svg', '/logo.svg']
 
 // Al instalar, guarda la página y los archivos que ella usa (JS y CSS), así abre sin señal.

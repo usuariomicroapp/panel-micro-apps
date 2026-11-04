@@ -59,7 +59,7 @@ export default function Catalog() {
         {items?.map((p) => {
           const view = { name: p.name, prize: p.name, photos: p.photos }
           return (
-            <article key={p.id} className="overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
+            <article key={p.id} className="overflow-hidden card rounded-3xl shadow-sm">
               <RaffleImage raffle={view} gallery className="aspect-square w-full" />
               <div className="space-y-3 p-5">
                 <h2 className="text-xl font-bold">{p.name}</h2>
@@ -67,7 +67,7 @@ export default function Catalog() {
                 {p.description && <p className="whitespace-pre-line text-base text-ink/80">{p.description}</p>}
                 {p.prize_info && <p className="whitespace-pre-line rounded-xl bg-canvas p-3 text-sm">{p.prize_info}</p>}
                 {p.raffles.map((r) => (
-                  <Link key={r.id} to={`/sorteo/${r.id}`} className="block rounded-2xl bg-brand-600 py-3.5 text-center text-lg font-bold text-white">
+                  <Link key={r.id} to={`/sorteo/${r.id}`} className="block rounded-2xl btn-gold py-3.5 text-center text-lg font-bold">
                     Participar por este premio
                   </Link>
                 ))}

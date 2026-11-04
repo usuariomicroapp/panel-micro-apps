@@ -1,38 +1,34 @@
 import type { NumberState } from '../lib/demo'
 import { pad } from '../lib/format'
 
-const styles: Record<NumberState, string> = {
-  available: 'bg-free/10 text-free border-free/40 hover:bg-free/20',
-  reserved: 'bg-held/15 text-yellow-800 border-held/50 cursor-not-allowed',
-  paid: 'bg-sold/10 text-sold/70 border-sold/30 cursor-not-allowed line-through',
-}
-
 interface Props {
   total: number
   digits: number
   states: Record<number, NumberState>
   selected: Set<number>
   onToggle: (n: number) => void
+  mine?: Set<number>
 }
 
-export default function NumberGrid({ total, digits, states, selected, onToggle }: Props) {
+// Grilla de números con tres colores fuertes: verde libre, azul mi número, rojo ocupado.
+export default function NumberGrid({ total, digits, states, selected, onToggle, mine }: Props) {
   return (
-    <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+    <div className="grid grid-cols-5 gap-2.5 sm:grid-cols-10 sm:gap-2">
       {Array.from({ length: total }, (_, n) => {
         const state = states[n] ?? 'available'
         const isSel = selected.has(n)
+        const isMine = mine?.has(n) ?? false
         const label = pad(n, digits)
+        const cls = isSel ? 'tile-sel' : isMine ? 'tile-mine' : state === 'available' ? 'tile-free' : 'tile-taken'
         return (
           <button
             key={n}
             type="button"
-            disabled={state !== 'available'}
+            disabled={!isSel && state !== 'available'}
             onClick={() => onToggle(n)}
             aria-pressed={isSel}
-            aria-label={`Número ${label}: ${state === 'available' ? 'disponible' : 'ya elegido'}`}
-            className={`min-h-14 rounded-xl border-2 text-xl font-bold tabular-nums transition sm:aspect-square sm:min-h-0 sm:text-base ${
-              isSel ? 'scale-105 border-brand-600 bg-brand-600 text-white shadow-md' : styles[state]
-            }`}
+            aria-label={`Número ${label}: ${isSel || isMine ? 'mi número' : state === 'available' ? 'libre' : 'ocupado'}`}
+            className={`tile ${cls} min-h-14 rounded-xl text-xl font-extrabold tabular-nums disabled:cursor-not-allowed sm:aspect-square sm:min-h-0 sm:text-base`}
           >
             {label}
           </button>
@@ -44,14 +40,16 @@ export default function NumberGrid({ total, digits, states, selected, onToggle }
 
 export function GridLegend() {
   const items = [
-    ['bg-free', 'Verde: libre'],
-    ['bg-sold', 'Rojo: ya elegido'],
-    ['bg-brand-600', 'Violeta: elegido por vos'],
+    ['tile tile-free', 'text-free', 'Libre'],
+    ['tile tile-mine', 'text-mine', 'Mi número'],
+    ['tile tile-taken', 'text-sold', 'Ocupados'],
   ]
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-muted">
-      {items.map(([c, l]) => (
-        <span key={l} className="inline-flex items-center gap-1.5"><span className={`h-4 w-4 rounded ${c}`} />{l}</span>
+    <div className="flex flex-wrap gap-x-5 gap-y-2">
+      {items.map(([c, t, l]) => (
+        <span key={l} className={`inline-flex items-center gap-2 text-base font-extrabold uppercase tracking-wide ${t}`}>
+          <span className={`h-5 w-5 rounded-md ${c}`} />{l}
+        </span>
       ))}
     </div>
   )
