@@ -14,6 +14,7 @@ const paths = {
   back: 'M15 5l-7 7 7 7',
   bell: 'M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4',
   check: 'M5 13l4 4L19 7',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3',
 } as const
 
 export type IconName = keyof typeof paths
