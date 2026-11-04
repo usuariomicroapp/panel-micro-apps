@@ -8,6 +8,7 @@ import { BACK_KEY } from '../pages/Profile'
 import Notices from './Notices'
 import JoinOrganizer from './JoinOrganizer'
 import { PushBanner } from './AppSetup'
+import { trackInstall } from '../lib/pwa'
 import Icon, { type IconName } from './Icon'
 
 const nav: { to: string; label: string; icon: IconName }[] = [
@@ -25,7 +26,9 @@ const isDark = (path: string) => path.startsWith('/admin') || path.startsWith('/
 export default function Layout() {
   const { pathname } = useLocation()
   const { ready, session, isAdmin, isOwner, viewAsBuyer, setViewAsBuyer } = useAuth()
-  const { paused, pausedMessage } = useBrand()
+  const { paused, pausedMessage, org } = useBrand()
+  const uid = session?.user.id ?? null
+  useEffect(() => { void trackInstall(org, uid) }, [org, uid])
   // El participante solo ve sorteos, premios, resultados y su perfil. Invitar es del organizador.
   // El dueño comparte desde su panel. El organizador ve Invitar en lugar de Mis números (que igual tiene desde su perfil).
   // El organizador tiene su perfil dentro del panel (botón Perfil), no abajo.
