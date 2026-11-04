@@ -55,16 +55,44 @@ export function PushCard() {
   return (
     <section className="card rounded-3xl p-5">
       <h2 className="text-lg font-bold">🔔 Avisos en este celular</h2>
-      {state === 'on' && <p className="mt-2 text-base text-free">Activados. Te vamos a avisar si ganás o si cambia el día de un sorteo.</p>}
+      {state === 'on' && <p className="mt-2 text-base text-free">Activados. Te avisamos cuando haya un sorteo nuevo, si cambia el día y si ganás.</p>}
       {state === 'off' && (
         <>
-          <p className="mt-2 text-base">Activalos para enterarte al instante si ganás, aunque tengas la app cerrada.</p>
+          <p className="mt-2 text-base">Activalos para enterarte al instante cuando hay un sorteo nuevo y si ganás, aunque tengas la app cerrada.</p>
           <button onClick={turnOn} disabled={busy} className={`${btn} mt-4 w-full`}>{busy ? 'Activando…' : 'Activar avisos'}</button>
         </>
       )}
       {state === 'needs-install' && <p className="mt-2 text-base">En iPhone, los avisos funcionan cuando la app está instalada. Instalala (tocá «Cómo» arriba) y abrila desde el ícono.</p>}
       {state === 'denied' && <p className="mt-2 text-base">Los avisos están bloqueados. Para activarlos: Ajustes del celular → Notificaciones → buscá esta app (o el navegador) → Permitir.</p>}
       {error && <p className="mt-2 text-base text-sold">{error}</p>}
+    </section>
+  )
+}
+
+// Cartel grande para que el participante active los avisos (sorteos nuevos y si gana).
+export function PushBanner() {
+  const { session } = useAuth()
+  const [state, setState] = useState<PushState | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [later, setLater] = useState(() => { try { return sessionStorage.getItem('sorteo-avisos-luego') === '1' } catch { return false } })
+  useEffect(() => { if (session) pushState().then(setState).catch(() => setState('unsupported')) }, [session])
+  if (!session || later || !state || (state !== 'off' && state !== 'needs-install')) return null
+  const turnOn = async () => {
+    setBusy(true)
+    try { setState(await enablePush()) } catch { /* se puede reintentar */ }
+    setBusy(false)
+  }
+  const close = () => { setLater(true); try { sessionStorage.setItem('sorteo-avisos-luego', '1') } catch { /* sin almacenamiento */ } }
+  return (
+    <section className="mx-auto mt-4 w-full max-w-6xl px-4">
+      <div className="relative rounded-3xl border-2 border-gold bg-gold/15 p-5">
+        <button onClick={close} aria-label="Más tarde" className="absolute right-3 top-3 h-9 w-9 rounded-full text-xl text-muted">×</button>
+        <p className="pr-8 text-xl font-extrabold">🔔 Activá los avisos</p>
+        <p className="mt-1 text-base">Te avisamos al instante cuando hay un <b>sorteo nuevo</b> y si <b>ganaste</b>. Sin avisos te lo podés perder.</p>
+        {state === 'off'
+          ? <button onClick={turnOn} disabled={busy} className={`${btn} mt-4 w-full`}>{busy ? 'Activando…' : 'Sí, activar avisos'}</button>
+          : <p className="mt-3 text-base font-semibold">En iPhone: primero instalá la app (Compartir → «Agregar a inicio») y abrila desde el ícono.</p>}
+      </div>
     </section>
   )
 }

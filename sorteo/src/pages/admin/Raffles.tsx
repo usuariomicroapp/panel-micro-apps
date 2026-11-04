@@ -9,6 +9,7 @@ import {
 import { Card, Notice, ghostCls, inputCls, primaryCls } from '../../components/ui'
 import Icon from '../../components/Icon'
 import { raffleLink, useBrand } from '../../lib/brand'
+import { sendPendingPush } from '../../lib/pwa'
 
 interface Stats { taken: number; available: number; participants: number }
 
@@ -87,6 +88,8 @@ function RaffleForm({ initial, products, photo: current, onDone }: { initial?: R
         ? await supabase!.from('raffles').update(row).eq('id', initial.id)
         : await supabase!.from('raffles').insert(row)
       if (error) throw new Error(explain(error.message))
+      // Sorteo nuevo: sale el aviso a la gente del organizador.
+      if (!initial) void sendPendingPush()
       onDone()
     } catch (e2) {
       setErr(e2 instanceof Error ? explain(e2.message) : 'No se pudo guardar el sorteo.')
@@ -173,6 +176,7 @@ export default function Raffles() {
     if (status === 'cancelled' && !window.confirm(`¿Cancelar "${r.name}"? Deja de verse en la tienda.`)) return
     const { error } = await supabase!.from('raffles').update({ status }).eq('id', r.id)
     if (error) window.alert(explain(error.message))
+    else if (status === 'active') void sendPendingPush()
     void load()
   }
 

@@ -42,6 +42,16 @@ export function BrandProvider({ children }: { children: ReactNode }) {
 
   const setOrg = useCallback((id: string | null) => { store(id); setVisited(id) }, [])
 
+  // Quien entra con el link de un organizador lo sigue: así le llegan los avisos de sorteos nuevos.
+  useEffect(() => {
+    if (!supabase || !profile || !visited || own) return
+    const key = `sorteo-sigo-${profile.id}-${visited}`
+    try { if (localStorage.getItem(key)) return } catch { /* sin almacenamiento */ }
+    supabase.rpc('follow_organizer', { p_org: visited }).then(({ error }) => {
+      if (!error) { try { localStorage.setItem(key, '1') } catch { /* sin almacenamiento */ } }
+    })
+  }, [profile, visited, own])
+
   // Link con código: se busca de qué organizador es y se recuerda.
   useEffect(() => {
     const code = codeInUrl()
