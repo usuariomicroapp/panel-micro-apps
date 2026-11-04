@@ -123,7 +123,7 @@ function NewPasswordCard({ onDone }: { onDone: () => void }) {
   )
 }
 
-function ProfileCard() {
+export function ProfileCard() {
   const { profile, refreshProfile } = useAuth()
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)

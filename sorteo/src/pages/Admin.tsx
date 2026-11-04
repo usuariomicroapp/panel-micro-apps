@@ -12,6 +12,8 @@ import Owner from './admin/Owner'
 import DrawDay from './admin/DrawDay'
 import PasswordReset from './admin/PasswordReset'
 import ShareBox, { useInviteMessage } from '../components/ShareBox'
+import { ProfileCard } from './Profile'
+import { InstallCard, PushCard } from '../components/AppSetup'
 
 import Icon, { type IconName } from '../components/Icon'
 
@@ -22,10 +24,11 @@ const mainTabs: { id: string; label: string; icon: IconName }[] = [
   { id: 'participantes', label: 'Participantes', icon: 'users' },
   { id: 'productos', label: 'Productos de tienda', icon: 'gift' },
 ]
-const profileTabs = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'configuracion', label: 'Configuración' },
-  { id: 'historial', label: 'Historial' },
+// Dentro de Perfil: mis datos, el negocio (nombre y foto), resumen e historial.
+const profileTabs: { id: string; label: string; hint: string; icon: IconName }[] = [
+  { id: 'configuracion', label: 'Mi negocio', hint: 'Nombre, foto o logo y mensajes', icon: 'shield' },
+  { id: 'resumen', label: 'Resumen', hint: 'Cómo van tus sorteos e invitar gente', icon: 'chart' },
+  { id: 'historial', label: 'Historial', hint: 'Todo lo que se hizo en tu panel', icon: 'bell' },
 ]
 
 
@@ -34,7 +37,8 @@ export default function Admin() {
   const left = daysLeft(profile?.organizer_until)
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') ?? 'sorteos'
-  const inProfile = profileTabs.some((t) => t.id === tab)
+  const inProfile = tab === 'perfil' || profileTabs.some((t) => t.id === tab)
+  const section = profileTabs.find((t) => t.id === tab)
 
   if (!isConfigured) {
     return <ComingSoon stage={3}>El panel se activa cuando la app está conectada a la base de datos.</ComingSoon>
@@ -86,33 +90,50 @@ export default function Admin() {
         <h1 className="font-display text-3xl font-bold">Administración</h1>
         {left !== null && <p className="mt-2 rounded-xl bg-gold/15 px-3 py-2 text-sm font-semibold text-gold-dark">Período de prueba: {left === 0 ? 'hoy es el último día' : left === 1 ? 'te queda 1 día' : `te quedan ${left} días`}.</p>}
       </div>
-      <nav className="space-y-3">
-        <button onClick={() => setParams({ tab: 'resumen' })}
-          className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-lg font-extrabold ${inProfile ? 'btn-gold' : 'card text-ink'}`}>
-          <span className={`grid h-10 w-10 place-items-center rounded-full ${inProfile ? 'bg-night/15' : 'bg-gold/15 text-gold-dark'}`}><Icon name="user" /></span>
-          <span className="flex-1">Perfil<span className="block text-xs font-semibold opacity-75">Resumen · Configuración · Historial</span></span>
-          <span aria-hidden className="text-2xl">›</span>
-        </button>
-        <div className="grid grid-cols-2 gap-3">
-          {mainTabs.map((t) => (
-            <button key={t.id} onClick={() => setParams({ tab: t.id })}
-              className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl px-2 py-4 text-center text-base font-extrabold leading-tight ${tab === t.id ? 'btn-gold' : 'card text-ink'}`}>
-              <span className={`grid h-11 w-11 place-items-center rounded-full ${tab === t.id ? 'bg-night/15' : 'bg-gold/15 text-gold-dark'}`}><Icon name={t.icon} /></span>
-              {t.label}
-            </button>
-          ))}
+      {inProfile ? (
+        <div className="space-y-4">
+          <button onClick={() => setParams({ tab: section ? 'perfil' : 'sorteos' })}
+            className="card flex items-center gap-2 rounded-full px-4 py-2.5 text-base font-extrabold text-ink">
+            <Icon name="back" className="h-5 w-5" />{section ? 'Volver a Perfil' : 'Volver al panel'}
+          </button>
+          <h2 className="font-display text-2xl font-bold">{section ? section.label : 'Perfil'}</h2>
+          {!section && (
+            <>
+              <ProfileCard />
+              <div className="space-y-3">
+                {profileTabs.map((t) => (
+                  <button key={t.id} onClick={() => setParams({ tab: t.id })}
+                    className="card flex w-full items-center gap-3 rounded-2xl px-4 py-4 text-left">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gold/15 text-gold-dark"><Icon name={t.icon} /></span>
+                    <span className="flex-1"><span className="block text-lg font-extrabold">{t.label}</span><span className="block text-sm text-muted">{t.hint}</span></span>
+                    <span aria-hidden className="text-2xl text-muted">›</span>
+                  </button>
+                ))}
+              </div>
+              <InstallCard />
+              <PushCard />
+            </>
+          )}
         </div>
-        {inProfile && (
-          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-night/40 p-1">
-            {profileTabs.map((t) => (
+      ) : (
+        <nav className="space-y-3">
+          <button onClick={() => setParams({ tab: 'perfil' })}
+            className="card flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-lg font-extrabold text-ink">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/15 text-gold-dark"><Icon name="user" /></span>
+            <span className="flex-1">Perfil<span className="block text-xs font-semibold opacity-75">Mis datos · Mi negocio · Resumen · Historial</span></span>
+            <span aria-hidden className="text-2xl">›</span>
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            {mainTabs.map((t) => (
               <button key={t.id} onClick={() => setParams({ tab: t.id })}
-                className={`rounded-xl py-2.5 text-sm font-extrabold ${tab === t.id ? 'bg-surface text-ink shadow' : 'text-muted'}`}>
+                className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl px-2 py-4 text-center text-base font-extrabold leading-tight ${tab === t.id ? 'btn-gold' : 'card text-ink'}`}>
+                <span className={`grid h-11 w-11 place-items-center rounded-full ${tab === t.id ? 'bg-night/15' : 'bg-gold/15 text-gold-dark'}`}><Icon name={t.icon} /></span>
                 {t.label}
               </button>
             ))}
           </div>
-        )}
-      </nav>
+        </nav>
+      )}
       {tab === 'resumen' && <><InviteParticipants /><Overview /></>}
       {tab === 'dia' && <DrawDay />}
       {tab === 'sorteos' && <Raffles />}
