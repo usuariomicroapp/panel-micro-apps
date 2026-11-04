@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import NumberGrid, { GridLegend } from '../components/NumberGrid'
 import RaffleImage from '../components/RaffleImage'
 import { fecha, pad } from '../lib/format'
+import { hasDeadline } from '../lib/data'
 import { countView, usePublicRaffle } from '../lib/publicRaffles'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
@@ -133,7 +134,7 @@ export default function Raffle() {
               <div><dt className="text-sm text-muted">Premio</dt><dd className="font-semibold">{raffle.prize}</dd></div>
               <div><dt className="text-sm text-muted">Por persona</dt><dd className="font-semibold">Hasta {max} {max === 1 ? 'número' : 'números'}</dd></div>
               <div><dt className="text-sm text-muted">Sorteo oficial</dt><dd className="font-semibold">{raffle.officialDraw}</dd></div>
-              <div><dt className="text-sm text-muted">Se puede elegir hasta</dt><dd className="font-semibold">{fecha(raffle.closesAt)}</dd></div>
+              <div><dt className="text-sm text-muted">Se puede elegir hasta</dt><dd className="font-semibold">{hasDeadline(raffle.closesAt) ? fecha(raffle.closesAt) : 'Hasta que se cargue el día del sorteo'}</dd></div>
             </dl>
             <p className="mt-5 rounded-2xl border border-gold/40 bg-gold/10 p-4 text-base"><span className="font-extrabold">Cómo se gana: </span>{raffle.rule}. Ejemplo: si sale 8537, gana el {raffle.digits === 2 ? '37' : '8537'.slice(-raffle.digits)}.{raffle.unsold && <> Si nadie tiene ese número: {raffle.unsold.toLowerCase()}.</>}</p>
           </div>
