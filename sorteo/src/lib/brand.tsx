@@ -36,7 +36,8 @@ export function BrandProvider({ children }: { children: ReactNode }) {
   const [tick, setTick] = useState(0)
 
   // El organizador conectado siempre ve su propia marca.
-  const own = profile && profile.role === 'admin' && !isOwner ? profile.id : null
+  // El organizador (y el dueño, que también hace sus sorteos) usa su propia marca.
+  const own = profile && (profile.role === 'admin' || isOwner) ? profile.id : null
   const org = own ?? visited
 
   const setOrg = useCallback((id: string | null) => { store(id); setVisited(id) }, [])

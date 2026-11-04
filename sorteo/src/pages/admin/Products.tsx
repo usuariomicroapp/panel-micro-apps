@@ -147,9 +147,11 @@ export default function Products() {
 
   // Los premios de los sorteos se cargan desde Sorteos: acá van solo los productos de la tienda.
   const load = async () => {
-    const [{ data }, { data: rs }] = await Promise.all([supabase!.rpc('admin_products'), supabase!.from('raffles').select('product_id').eq('organizer_id', await myId())])
+    const me = await myId()
+    const [{ data }, { data: rs }] = await Promise.all([supabase!.rpc('admin_products'), supabase!.from('raffles').select('product_id').eq('organizer_id', me)])
     const used = new Set(((rs ?? []) as { product_id: string }[]).map((r) => r.product_id))
-    setItems(((data ?? []) as Product[]).filter((p) => !used.has(p.id)))
+    // Solo los productos propios (el dueño también ve los de otros por permisos, pero acá no van).
+    setItems(((data ?? []) as Product[]).filter((p) => !used.has(p.id) && (!p.organizer_id || p.organizer_id === me)))
   }
   useEffect(() => { void load() }, [])
 

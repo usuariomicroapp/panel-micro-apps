@@ -25,6 +25,7 @@ export interface Product {
   acquisition_cost?: number | null
   prize_info: string
   show_in_store?: boolean
+  organizer_id?: string | null
   created_at: string
 }
 
