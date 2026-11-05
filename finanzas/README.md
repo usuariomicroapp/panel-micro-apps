@@ -10,3 +10,7 @@ Microapp instalable (PWA) para controlar deudas, gastos, ingresos y el balance g
 Los datos viven en el dispositivo (`localStorage`). Para probar: abrir `finanzas/index.html` o servir la carpeta.
 
 Publicación (Cloudflare Pages): directorio raíz `finanzas`, sin comando de compilación, salida `.`.
+
+## Uso personal vs. comercial
+
+`config.js` controla la copia. Hoy `commercial:false` (uso personal, sin panel de administrador). Para vender, poné `commercial:true` en la copia propia: aparece el **Panel de administrador** en Ajustes (marca, clientes, códigos, vencimientos). Cada cliente recibe su propia copia con `commercial:false`.

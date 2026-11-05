@@ -45,6 +45,7 @@ const INKINDS = { Venta: '🛍️', 'Cobro de deuda': '🤝', Otro: '✨' };
 const ACCTYPES = { Efectivo: '💵', Banco: '🏦', Billetera: '📱', Tarjeta: '💳', Otro: '👛' };
 
 /* ---------- datos ---------- */
+const CFG = Object.assign({ commercial: false }, window.MC_CONFIG);
 const KEY = 'miscuentas.v1';
 const blank = () => ({
   profile: null, admin: null, brand: { name: 'Mis Cuentas', color: '#e8c26a' },
@@ -147,8 +148,10 @@ function homeView() {
     ...S.debts.flatMap(d => d.payments.map(p => ({ ...p, k: 'pay', concept: 'Pago: ' + d.name }))),
   ].sort((a, b) => (b.date + (b.ts || 0)) < (a.date + (a.ts || 0)) ? -1 : 1).slice(0, 6).map(moveRow).join('');
 
+  const stale = (S.debts.length || S.incomes.length || S.expenses.length) && (!S.lastBackup || Date.now() - S.lastBackup > 7 * 864e5);
+  const warn = stale ? `<div class="note" style="margin:0 0 14px">💾 Hace más de una semana que no guardás una copia de seguridad. <button class="link" data-act="export">Guardar ahora</button></div>` : '';
   return `
-  <section class="hero"><div class="lbl">Balance general</div>
+  ${warn}<section class="hero"><div class="lbl">Balance general</div>
     <div class="big num" style="color:${net < 0 ? 'var(--bad)' : 'var(--fg)'}">${money(net)}</div>
     ${pill}
     <div class="meter"><i style="width:${cov}%"></i></div>
@@ -313,7 +316,7 @@ function settingsView() {
     ${row('import', '⬆️', 'Restaurar copia', 'Cargá un archivo guardado antes')}
     ${S.profile.pin ? row('lock', '🔒', 'Bloquear ahora', 'Volver a pedir el PIN') : ''}
   </section>
-  <section class="card" style="margin-top:16px">${row('admin', '🛡️', 'Panel de administrador', 'Marca, clientes y licencias')}</section>
+  ${CFG.commercial ? `<section class="card" style="margin-top:16px">${row('admin', '🛡️', 'Panel de administrador', 'Marca, clientes y licencias')}</section>` : ''}
   <input type="file" id="file" accept="application/json" hidden>
   <p class="hint" style="text-align:center;margin-top:22px">Tus datos viven solo en este dispositivo.<br>Hacé copias de seguridad seguido.</p></div>`;
 }
@@ -407,9 +410,9 @@ document.addEventListener('click', e => {
     case 'export': {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }));
-      a.download = `mis-cuentas-${todayStr()}.json`; a.click(); toast('Copia descargada'); break; }
+      a.download = `mis-cuentas-${todayStr()}.json`; a.click(); S.lastBackup = Date.now(); save(); rerender(); toast('Copia descargada'); break; }
     case 'import': $('#file').click(); break;
-    case 'admin': ui.adminOK ? (ui.view = 'admin', rerender()) : adminAuth(); break;
+    case 'admin': if (!CFG.commercial) break; ui.adminOK ? (ui.view = 'admin', rerender()) : adminAuth(); break;
     case 'admin-out': ui.adminOK = false; ui.view = 'settings'; rerender(); break;
     case 'admin-pass': adminPassForm(); break;
     case 'new-client': clientForm(); break;
