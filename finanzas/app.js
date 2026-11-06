@@ -49,13 +49,13 @@ const CFG = Object.assign({ commercial: false }, window.MC_CONFIG);
 const KEY = 'miscuentas.v1';
 const blank = () => ({
   profile: null, admin: null, brand: { name: 'Mis Cuentas', color: '#e8c26a' },
-  clients: [], accounts: [], debts: [], expenses: [], incomes: [],
+  clients: [], accounts: [], debts: [], credits: [], expenses: [], incomes: [],
 });
 let S = blank();
 try { S = { ...blank(), ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { S = blank(); }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { toast('No se pudo guardar: sin espacio'); } }
 
-const ui = { tab: 'home', month: monthOf(todayStr()), unlocked: false, adminOK: false, view: null, showPaid: false };
+const ui = { side: 'd', tab: 'home', month: monthOf(todayStr()), unlocked: false, adminOK: false, view: null, showPaid: false };
 
 /* ---------- cálculos ---------- */
 const paid = d => sum(d.payments.map(p => p.amount));
@@ -64,12 +64,14 @@ function accBalance(a) {
   return a.initial
     + sum(S.incomes.filter(x => x.accountId === a.id).map(x => x.amount))
     - sum(S.expenses.filter(x => x.accountId === a.id).map(x => x.amount))
-    - sum(S.debts.flatMap(d => d.payments).filter(p => p.accountId === a.id).map(p => p.amount));
+    - sum(S.debts.flatMap(d => d.payments).filter(p => p.accountId === a.id).map(p => p.amount))
+    + sum(S.credits.flatMap(d => d.payments).filter(p => p.accountId === a.id).map(p => p.amount));
 }
 const totals = () => {
   const cash = sum(S.accounts.map(accBalance));
   const debt = sum(S.debts.map(pending));
-  return { cash, debt, net: cash - debt };
+  const owed = sum(S.credits.map(pending));
+  return { cash, debt, owed, net: cash - debt };
 };
 const accName = id => S.accounts.find(a => a.id === id)?.name || 'Sin cuenta';
 
@@ -125,10 +127,11 @@ function shell() {
 
 /* ---------- vistas ---------- */
 function homeView() {
-  const { cash, debt, net } = totals();
+  const { cash, debt, owed, net } = totals();
   const cov = debt === 0 ? 100 : Math.min(100, Math.max(0, (cash / debt) * 100));
   const m = ui.month === monthOf(todayStr()) ? ui.month : monthOf(todayStr());
-  const inM = sum(S.incomes.filter(x => monthOf(x.date) === m).map(x => x.amount));
+  const inM = sum(S.incomes.filter(x => monthOf(x.date) === m).map(x => x.amount))
+    + sum(S.credits.flatMap(c => c.payments).filter(x => monthOf(x.date) === m).map(x => x.amount));
   const outM = sum(S.expenses.filter(x => monthOf(x.date) === m).map(x => x.amount));
   let pill, msg;
   if (!S.debts.length && !S.accounts.length) { pill = '<span class="pill warn">Empecemos</span>'; msg = 'Cargá tus deudas y tu plata para ver el balance.'; }
@@ -143,9 +146,11 @@ function homeView() {
     : `<div class="empty"><b>Sin cuentas</b>Agregá dónde tenés tu plata.</div>`;
 
   const dl = S.debts.filter(d => pending(d) > 0).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1).slice(0, 4).map(debtRow).join('');
+  const cl = S.credits.filter(d => pending(d) > 0).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1).slice(0, 4).map(debtRow).join('');
   const recent = [
     ...S.incomes.map(x => ({ ...x, k: 'in' })), ...S.expenses.map(x => ({ ...x, k: 'out' })),
     ...S.debts.flatMap(d => d.payments.map(p => ({ ...p, k: 'pay', concept: 'Pago: ' + d.name }))),
+    ...S.credits.flatMap(d => d.payments.map(p => ({ ...p, k: 'col', creditId: d.id, concept: 'Cobro: ' + d.name }))),
   ].sort((a, b) => (b.date + (b.ts || 0)) < (a.date + (a.ts || 0)) ? -1 : 1).slice(0, 6).map(moveRow).join('');
 
   const stale = (S.debts.length || S.incomes.length || S.expenses.length) && (!S.lastBackup || Date.now() - S.lastBackup > 7 * 864e5);
@@ -155,60 +160,66 @@ function homeView() {
     <div class="big num" style="color:${net < 0 ? 'var(--bad)' : 'var(--fg)'}">${money(net)}</div>
     ${pill}
     <div class="meter"><i style="width:${cov}%"></i></div>
-    <div class="sub"><span>${msg}</span></div></section>
+    <div class="sub"><span>${msg}</span>${owed ? `<span>Si cobrás todo lo que te deben: <b class="num">${money(net + owed)}</b></span>` : ''}</div></section>
   <div class="stats">
     <div class="stat cash"><span>Plata que tengo</span><b class="num">${money(cash)}</b></div>
     <div class="stat debt"><span>Total que debo</span><b class="num">${money(debt)}</b></div>
     <div class="stat"><span>Ingresos del mes</span><b class="num" style="color:var(--good)">${money(inM)}</b></div>
-    <div class="stat"><span>Gastos del mes</span><b class="num" style="color:var(--bad)">${money(outM)}</b></div></div>
+    <div class="stat"><span>Gastos del mes</span><b class="num" style="color:var(--bad)">${money(outM)}</b></div>
+    <div class="stat" style="grid-column:1/-1"><span>Me deben</span><b class="num" style="color:var(--blue)">${money(owed)}</b></div></div>
   <section class="sec"><div class="sechead"><h2>Dónde está tu plata</h2><button class="link" data-act="new-acc">+ Cuenta</button></div>
     <div class="card">${accs}</div></section>
   <section class="sec"><div class="sechead"><h2>Qué me falta pagar</h2><button class="link" data-act="tab" data-v="debts">Ver todo</button></div>
     <div class="card">${dl || `<div class="empty"><b>Todo al día</b>No hay deudas pendientes.</div>`}</div></section>
+  ${S.credits.length ? `<section class="sec"><div class="sechead"><h2>Me deben</h2><button class="link" data-act="side-c">Ver todo</button></div>
+    <div class="card">${cl || `<div class="empty"><b>Nada pendiente</b>Te pagaron todo.</div>`}</div></section>` : ''}
   <section class="sec"><div class="sechead"><h2>Últimos movimientos</h2></div>
     <div class="card">${recent || `<div class="empty"><b>Sin movimientos</b>Usá el botón + para cargar el primero.</div>`}</div></section>`;
 }
 
 function debtRow(d) {
+  const cr = S.credits.includes(d);
   const p = pending(d), pc = d.total ? Math.min(100, (paid(d) / d.total) * 100) : 0;
   const late = d.due && p > 0 && d.due < todayStr();
-  return `<div class="row" data-act="debt" data-id="${d.id}"><div class="ico">${p === 0 ? '✅' : '💳'}</div>
+  return `<div class="row" data-act="debt" data-id="${d.id}"><div class="ico">${p === 0 ? '✅' : cr ? '🤝' : '💳'}</div>
     <div class="t"><b>${esc(d.name)}</b>
-      <small>${esc(d.kind || 'Deuda')}${d.due ? ` · vence ${fmtDate(d.due)}${late ? ' ⚠️' : ''}` : ''}</small>
+      <small>${esc(d.kind || (cr ? 'Me deben' : 'Deuda'))}${d.due ? ` · ${cr ? 'cobrar' : 'vence'} ${fmtDate(d.due)}${late ? ' ⚠️' : ''}` : ''}</small>
       <div class="mini"><i style="width:${pc}%"></i></div></div>
-    <div class="amt num ${p ? 'out' : 'in'}">${p ? money(p) : 'Pagada'}${p && paid(d) ? `<div class="hint" style="font-weight:400;font-size:12px">de ${money(d.total)}</div>` : ''}</div></div>`;
+    <div class="amt num ${p === 0 ? 'in' : cr ? '' : 'out'}" ${cr && p ? 'style="color:var(--blue)"' : ''}>${p ? money(p) : cr ? 'Cobrada' : 'Pagada'}${p && paid(d) ? `<div class="hint" style="font-weight:400;font-size:12px">de ${money(d.total)}</div>` : ''}</div></div>`;
 }
 function moveRow(x) {
-  const icon = x.k === 'in' ? INKINDS[x.kind] || '✨' : x.k === 'out' ? CATS[x.category] || '🧩' : '💸';
-  const act = x.k === 'in' ? 'edit-in' : x.k === 'out' ? 'edit-out' : '';
-  return `<div class="row" ${act ? `data-act="${act}" data-id="${x.id}"` : ''}><div class="ico">${icon}</div>
+  const icon = x.k === 'in' ? INKINDS[x.kind] || '✨' : x.k === 'out' ? CATS[x.category] || '🧩' : x.k === 'col' ? '🤝' : '💸';
+  const act = x.creditId ? 'debt' : x.k === 'in' ? 'edit-in' : x.k === 'out' ? 'edit-out' : '';
+  return `<div class="row" ${act ? `data-act="${act}" data-id="${x.creditId || x.id}"` : ''}><div class="ico">${icon}</div>
     <div class="t"><b>${esc(x.concept)}</b><small>${fmtDate(x.date)} · ${esc(accName(x.accountId))}</small></div>
-    <div class="amt num ${x.k === 'in' ? 'in' : 'out'}">${x.k === 'in' ? '+' : '−'}${money(x.amount)}</div></div>`;
+    <div class="amt num ${x.k === 'in' || x.k === 'col' ? 'in' : 'out'}">${x.k === 'in' || x.k === 'col' ? '+' : '−'}${money(x.amount)}</div></div>`;
 }
 
 function debtsView() {
-  const open = S.debts.filter(d => pending(d) > 0).sort((a, b) => pending(b) - pending(a));
-  const done = S.debts.filter(d => pending(d) === 0);
-  const tot = sum(S.debts.map(pending)), totAll = sum(S.debts.map(d => d.total));
+  const cr = ui.side === 'c', arr = cr ? S.credits : S.debts;
+  const open = arr.filter(d => pending(d) > 0).sort((a, b) => pending(b) - pending(a));
+  const done = arr.filter(d => pending(d) === 0);
+  const tot = sum(arr.map(pending)), totAll = sum(arr.map(d => d.total));
   const byKind = {};
   open.forEach(d => { const k = d.kind || 'Otras'; byKind[k] = (byKind[k] || 0) + pending(d); });
   const bars = Object.entries(byKind).sort((a, b) => b[1] - a[1]).map(([k, v]) => `
     <div class="cat"><div class="h"><span>${esc(k)}</span><span class="num">${money(v)}</span></div>
     <div class="mini"><i style="width:${(v / tot) * 100}%"></i></div></div>`).join('');
   return `
-  <section class="hero"><div class="lbl">Total que debés</div><div class="big num" style="color:var(--bad)">${money(tot)}</div>
-    <div class="sub"><span>Ya pagaste ${money(totAll - tot)} de ${money(totAll)}</span></div>
+  <div class="seg"><button class="${cr ? '' : 'on'}" data-act="side" data-v="d">Debo</button><button class="${cr ? 'on' : ''}" data-act="side" data-v="c">Me deben</button></div>
+  <section class="hero"><div class="lbl">${cr ? 'Total que te deben' : 'Total que debés'}</div><div class="big num" style="color:${cr ? 'var(--blue)' : 'var(--bad)'}">${money(tot)}</div>
+    <div class="sub"><span>${cr ? 'Ya cobraste' : 'Ya pagaste'} ${money(totAll - tot)} de ${money(totAll)}</span></div>
     <div class="meter"><i style="width:${totAll ? ((totAll - tot) / totAll) * 100 : 0}%"></i></div></section>
-  ${bars ? `<section class="sec"><div class="sechead"><h2>Por tipo de deuda</h2></div><div class="card" style="padding-block:12px">${bars}</div></section>` : ''}
-  <section class="sec"><div class="sechead"><h2>Mis deudas</h2><button class="link" data-act="new-debt">+ Nueva deuda</button></div>
-    <div class="card">${open.map(debtRow).join('') || `<div class="empty"><b>No hay deudas pendientes</b>Cargá una con el botón +.</div>`}</div></section>
-  ${done.length ? `<section class="sec"><div class="sechead"><h2>Pagadas (${done.length})</h2><button class="link" data-act="toggle-paid">${ui.showPaid ? 'Ocultar' : 'Mostrar'}</button></div>
+  ${bars ? `<section class="sec"><div class="sechead"><h2>Por tipo</h2></div><div class="card" style="padding-block:12px">${bars}</div></section>` : ''}
+  <section class="sec"><div class="sechead"><h2>${cr ? 'Lo que me deben' : 'Mis deudas'}</h2><button class="link" data-act="${cr ? 'new-credit' : 'new-debt'}">+ Nueva</button></div>
+    <div class="card">${open.map(debtRow).join('') || `<div class="empty"><b>${cr ? 'Nadie te debe nada' : 'No hay deudas pendientes'}</b>Cargá una con el botón +.</div>`}</div></section>
+  ${done.length ? `<section class="sec"><div class="sechead"><h2>${cr ? 'Cobradas' : 'Pagadas'} (${done.length})</h2><button class="link" data-act="toggle-paid">${ui.showPaid ? 'Ocultar' : 'Mostrar'}</button></div>
     ${ui.showPaid ? `<div class="card">${done.map(debtRow).join('')}</div>` : ''}</section>` : ''}`;
 }
 
 function monthList(kind) {
   const isOut = kind === 'out';
-  const list = (isOut ? S.expenses : S.incomes).filter(x => monthOf(x.date) === ui.month).sort((a, b) => (b.date + b.ts) < (a.date + a.ts) ? -1 : 1);
+  const list = (isOut ? S.expenses : [...S.incomes, ...S.credits.flatMap(c => c.payments.map(p => ({ ...p, concept: 'Cobro: ' + c.name, kind: 'Cobro de deuda', creditId: c.id })))]).filter(x => monthOf(x.date) === ui.month).sort((a, b) => (b.date + b.ts) < (a.date + a.ts) ? -1 : 1);
   const total = sum(list.map(x => x.amount));
   const groups = {};
   list.forEach(x => { const k = isOut ? x.category : x.kind; groups[k] = (groups[k] || 0) + x.amount; });
@@ -221,7 +232,7 @@ function monthList(kind) {
     <div class="big num" style="color:${isOut ? 'var(--bad)' : 'var(--good)'}">${money(total)}</div></section>
   ${bars ? `<section class="sec"><div class="sechead"><h2>${isOut ? 'En qué gastás' : 'De dónde entra'}</h2></div><div class="card" style="padding-block:12px">${bars}</div></section>` : ''}
   <section class="sec"><div class="sechead"><h2>Movimientos</h2><button class="link" data-act="${isOut ? 'new-out' : 'new-in'}">+ ${isOut ? 'Nuevo gasto' : 'Nuevo ingreso'}</button></div>
-    <div class="card">${list.map(x => moveRow({ ...x, k: kind })).join('') || `<div class="empty"><b>Nada cargado este mes</b>Tocá + para agregar.</div>`}</div></section>`;
+    <div class="card">${list.map(x => moveRow({ ...x, k: x.creditId ? 'col' : kind })).join('') || `<div class="empty"><b>Nada cargado este mes</b>Tocá + para agregar.</div>`}</div></section>`;
 }
 const expensesView = () => monthList('out');
 const incomesView = () => monthList('in');
@@ -244,47 +255,53 @@ function chooser() {
   sheet(`<h2>¿Qué querés cargar?</h2><div class="btns">
     <button class="btn ghost" data-act="new-in">⬇️ Entró plata (venta, cobro…)</button>
     <button class="btn ghost" data-act="new-out">⬆️ Un gasto</button>
-    <button class="btn ghost" data-act="new-debt">💳 Una deuda nueva</button>
+    <button class="btn ghost" data-act="new-debt">💳 Una deuda nueva (yo debo)</button>
+    <button class="btn ghost" data-act="new-credit">🤝 Alguien me debe</button>
     <button class="btn ghost" data-act="pay-pick">💸 Pagué una deuda</button>
+    <button class="btn ghost" data-act="col-pick">✅ Me pagaron una deuda</button>
     <button class="btn ghost" data-act="new-acc">🏦 Una cuenta nueva</button></div>`);
 }
-function debtForm(d) {
-  const kinds = [...new Set(['Materias primas', 'Tarjetas', 'Préstamos', 'Proveedores', 'Servicios', 'Personas', ...S.debts.map(x => x.kind).filter(Boolean)])];
-  sheet(`<h2>${d ? 'Editar deuda' : 'Nueva deuda'}</h2><form data-form="debt" data-id="${d?.id || ''}">
-    <label class="f"><span>Nombre</span><input class="inp" name="name" required placeholder="Ej: Deuda materias primas" value="${esc(d?.name)}"></label>
-    <div class="two"><label class="f"><span>Tipo</span><input class="inp" name="kind" list="kinds" placeholder="Ej: Tarjetas" value="${esc(d?.kind)}"><datalist id="kinds">${kinds.map(k => `<option>${esc(k)}</option>`).join('')}</datalist></label>
-    <label class="f"><span>Vence (opcional)</span><input class="inp" type="date" name="due" value="${d?.due || ''}"></label></div>
+function debtForm(d, side) {
+  const cr = d ? S.credits.includes(d) : side === 'c';
+  const base = cr ? ['Clientes', 'Fiado', 'Préstamos', 'Familia y amigos'] : ['Materias primas', 'Tarjetas', 'Préstamos', 'Proveedores', 'Servicios', 'Personas'];
+  const kinds = [...new Set([...base, ...(cr ? S.credits : S.debts).map(x => x.kind).filter(Boolean)])];
+  sheet(`<h2>${d ? 'Editar' : 'Nueva'} ${cr ? 'deuda a mi favor' : 'deuda'}</h2><form data-form="debt" data-id="${d?.id || ''}"><input type="hidden" name="side" value="${cr ? 'c' : 'd'}">
+    <label class="f"><span>Nombre</span><input class="inp" name="name" required placeholder="${cr ? 'Ej: Juan, fiado' : 'Ej: Deuda materias primas'}" value="${esc(d?.name)}"></label>
+    <div class="two"><label class="f"><span>Tipo</span><input class="inp" name="kind" list="kinds" placeholder="${cr ? 'Ej: Clientes' : 'Ej: Tarjetas'}" value="${esc(d?.kind)}"><datalist id="kinds">${kinds.map(k => `<option>${esc(k)}</option>`).join('')}</datalist></label>
+    <label class="f"><span>${cr ? 'Cobrar el (opcional)' : 'Vence (opcional)'}</span><input class="inp" type="date" name="due" value="${d?.due || ''}"></label></div>
     ${amountInput(d?.total)}
-    <label class="f"><span>Nota (opcional)</span><input class="inp" name="note" placeholder="A quién le debés, detalle…" value="${esc(d?.note)}"></label>
-    <div class="btns"><button class="btn">Guardar</button>${d ? `<button type="button" class="btn danger" data-act="del-debt" data-id="${d.id}">Eliminar deuda</button>` : ''}</div></form>`);
+    <label class="f"><span>Nota (opcional)</span><input class="inp" name="note" placeholder="${cr ? 'Quién te debe, detalle…' : 'A quién le debés, detalle…'}" value="${esc(d?.note)}"></label>
+    <div class="btns"><button class="btn">Guardar</button>${d ? `<button type="button" class="btn danger" data-act="del-debt" data-id="${d.id}">Eliminar</button>` : ''}</div></form>`);
 }
 function debtDetail(id) {
-  const d = S.debts.find(x => x.id === id); if (!d) return;
-  const p = pending(d);
+  const d = findAny(id); if (!d) return;
+  const cr = S.credits.includes(d), p = pending(d);
   sheet(`<h2>${esc(d.name)}</h2>
     <div class="stats" style="margin:0 0 14px"><div class="stat"><span>Total</span><b class="num">${money(d.total)}</b></div>
-    <div class="stat debt"><span>Falta pagar</span><b class="num">${money(p)}</b></div></div>
-    <p class="hint">${esc(d.kind || '')}${d.due ? ` · vence ${fmtDate(d.due)}` : ''}${d.note ? ` · ${esc(d.note)}` : ''}</p>
+    <div class="stat ${cr ? 'cash' : 'debt'}"><span>${cr ? 'Falta cobrar' : 'Falta pagar'}</span><b class="num">${money(p)}</b></div></div>
+    <p class="hint">${esc(d.kind || '')}${d.due ? ` · ${cr ? 'cobrar' : 'vence'} ${fmtDate(d.due)}` : ''}${d.note ? ` · ${esc(d.note)}` : ''}</p>
     <div class="btns h" style="margin-bottom:14px">
-      <button class="btn" data-act="pay" data-id="${d.id}" ${p ? '' : 'disabled style="opacity:.4"'}>Registrar pago</button>
+      <button class="btn" data-act="pay" data-id="${d.id}" ${p ? '' : 'disabled style="opacity:.4"'}>${cr ? 'Registrar cobro' : 'Registrar pago'}</button>
       <button class="btn ghost" data-act="edit-debt" data-id="${d.id}">Editar</button></div>
-    ${d.payments.length ? `<h3 style="margin:8px 0">Pagos realizados</h3><div class="card">${d.payments.slice().reverse().map(x => `
-      <div class="row" data-act="del-pay" data-id="${d.id}" data-pid="${x.id}"><div class="ico">💸</div>
-      <div class="t"><b>${fmtDate(x.date)}</b><small>Desde ${esc(accName(x.accountId))}</small></div><div class="amt num in">${money(x.amount)}</div></div>`).join('')}</div>
-      <p class="hint">Tocá un pago para anularlo (la plata vuelve a la cuenta).</p>` : ''}`);
+    ${d.payments.length ? `<h3 style="margin:8px 0">${cr ? 'Cobros recibidos' : 'Pagos realizados'}</h3><div class="card">${d.payments.slice().reverse().map(x => `
+      <div class="row" data-act="del-pay" data-id="${d.id}" data-pid="${x.id}"><div class="ico">${cr ? '🤝' : '💸'}</div>
+      <div class="t"><b>${fmtDate(x.date)}</b><small>${cr ? 'Entró en' : 'Desde'} ${esc(accName(x.accountId))}</small></div><div class="amt num ${cr ? 'in' : 'out'}">${money(x.amount)}</div></div>`).join('')}</div>
+      <p class="hint">Tocá uno para anularlo (la plata vuelve a su lugar).</p>` : ''}`);
 }
 function payForm(id) {
-  const d = S.debts.find(x => x.id === id); if (!d) return;
-  sheet(`<h2>Pago · ${esc(d.name)}</h2><p class="hint">Falta pagar ${money(pending(d))}</p>
+  const d = findAny(id); if (!d) return;
+  const cr = S.credits.includes(d);
+  sheet(`<h2>${cr ? 'Cobro' : 'Pago'} · ${esc(d.name)}</h2><p class="hint">Falta ${cr ? 'cobrar' : 'pagar'} ${money(pending(d))}</p>
     <form data-form="pay" data-id="${id}">${amountInput(pending(d))}
-    <div class="two"><label class="f"><span>Pagué desde</span><select class="inp" name="accountId">${accOptions(S.accounts[0]?.id)}</select></label>
+    <div class="two"><label class="f"><span>${cr ? 'Entró en' : 'Pagué desde'}</span><select class="inp" name="accountId">${accOptions(S.accounts[0]?.id)}</select></label>
     <label class="f"><span>Fecha</span><input class="inp" type="date" name="date" value="${todayStr()}"></label></div>
-    <div class="btns"><button class="btn">Registrar pago</button></div></form>`);
+    <div class="btns"><button class="btn">${cr ? 'Registrar cobro' : 'Registrar pago'}</button></div></form>`);
 }
-function payPick() {
-  const open = S.debts.filter(d => pending(d) > 0);
-  if (!open.length) { toast('No tenés deudas pendientes'); return; }
-  sheet(`<h2>¿Qué deuda pagaste?</h2><div class="card">${open.map(debtRow).join('')}</div>`);
+function payPick(side) {
+  const cr = side === 'c';
+  const open = (cr ? S.credits : S.debts).filter(d => pending(d) > 0);
+  if (!open.length) { toast(cr ? 'Nadie te debe nada' : 'No tenés deudas pendientes'); return; }
+  sheet(`<h2>${cr ? '¿Quién te pagó?' : '¿Qué deuda pagaste?'}</h2><div class="card">${open.map(debtRow).join('')}</div>`);
   $('.sheet').querySelectorAll('[data-act="debt"]').forEach(r => r.dataset.act = 'pay');
 }
 function moveForm(kind, x) {
@@ -372,6 +389,7 @@ function clientForm(c) {
 
 /* ---------- eventos ---------- */
 const find = (arr, id) => arr.find(x => x.id === id);
+const findAny = id => find(S.debts, id) || find(S.credits, id);
 const rerender = () => { const y = scrollY; render(); scrollTo(0, y); };
 function done(msg) { save(); closeSheet(); rerender(); if (msg) toast(msg); }
 function confirmDo(msg, fn) { if (confirm(msg)) fn(); }
@@ -381,18 +399,22 @@ document.addEventListener('click', e => {
   const { act, id, v, d, pid } = el.dataset;
   switch (act) {
     case 'tab': ui.tab = v; ui.view = null; closeSheet(); rerender(); scrollTo(0, 0); break;
-    case 'add': ({ home: chooser, debts: () => debtForm(), expenses: () => moveForm('out'), incomes: () => moveForm('in') })[ui.tab](); break;
+    case 'add': ({ home: chooser, debts: () => debtForm(null, ui.side), expenses: () => moveForm('out'), incomes: () => moveForm('in') })[ui.tab](); break;
     case 'month': ui.month = shiftMonth(ui.month, +d); rerender(); break;
     case 'toggle-paid': ui.showPaid = !ui.showPaid; rerender(); break;
     case 'settings': ui.view = 'settings'; closeSheet(); rerender(); scrollTo(0, 0); break;
     case 'back': ui.view = null; rerender(); break;
-    case 'new-debt': debtForm(); break;
-    case 'edit-debt': debtForm(find(S.debts, id)); break;
+    case 'new-debt': debtForm(null, 'd'); break;
+    case 'new-credit': debtForm(null, 'c'); break;
+    case 'side': ui.side = v; rerender(); break;
+    case 'side-c': ui.side = 'c'; ui.tab = 'debts'; rerender(); scrollTo(0, 0); break;
+    case 'edit-debt': debtForm(findAny(id)); break;
     case 'debt': debtDetail(id); break;
     case 'pay': payForm(id); break;
-    case 'pay-pick': payPick(); break;
-    case 'del-pay': confirmDo('¿Anular este pago? La plata vuelve a la cuenta.', () => { const dd = find(S.debts, id); dd.payments = dd.payments.filter(p => p.id !== pid); save(); rerender(); debtDetail(id); }); break;
-    case 'del-debt': confirmDo('¿Eliminar esta deuda y sus pagos?', () => { S.debts = S.debts.filter(x => x.id !== id); done('Deuda eliminada'); }); break;
+    case 'pay-pick': payPick('d'); break;
+    case 'col-pick': payPick('c'); break;
+    case 'del-pay': confirmDo('¿Anular este pago? La plata vuelve a la cuenta.', () => { const dd = findAny(id); dd.payments = dd.payments.filter(p => p.id !== pid); save(); rerender(); debtDetail(id); }); break;
+    case 'del-debt': confirmDo('¿Eliminar esta deuda y sus pagos?', () => { S.debts = S.debts.filter(x => x.id !== id); S.credits = S.credits.filter(x => x.id !== id); done('Eliminado'); }); break;
     case 'new-out': moveForm('out'); break;
     case 'new-in': moveForm('in'); break;
     case 'edit-out': moveForm('out', find(S.expenses, id)); break;
@@ -403,7 +425,7 @@ document.addEventListener('click', e => {
     case 'edit-acc': accForm(find(S.accounts, id)); break;
     case 'del-acc': confirmDo('¿Eliminar la cuenta? Sus movimientos quedan sin cuenta.', () => {
       S.accounts = S.accounts.filter(x => x.id !== id);
-      [...S.incomes, ...S.expenses, ...S.debts.flatMap(x => x.payments)].forEach(m => { if (m.accountId === id) m.accountId = ''; });
+      [...S.incomes, ...S.expenses, ...S.debts.flatMap(x => x.payments), ...S.credits.flatMap(x => x.payments)].forEach(m => { if (m.accountId === id) m.accountId = ''; });
       done('Cuenta eliminada'); }); break;
     case 'profile': profileForm(); break;
     case 'lock': ui.unlocked = false; ui.view = null; rerender(); break;
@@ -423,7 +445,7 @@ document.addEventListener('click', e => {
       const txt = `¡Hola ${c.name}! Te paso tu acceso a ${S.brand.name}.\nTu código: ${c.code}${c.until ? '\nVigente hasta: ' + fmtDate(c.until) : ''}`;
       (navigator.clipboard?.writeText(txt) || Promise.reject()).then(() => toast('Mensaje copiado'), () => prompt('Copiá este mensaje:', txt)); break; }
     case 'wipe': confirmDo('Se borran deudas, gastos, ingresos y cuentas de esta copia. ¿Seguro?', () => {
-      S.debts = []; S.expenses = []; S.incomes = []; S.accounts = []; S.profile = null; ui.unlocked = false; ui.view = null; ui.tab = 'home'; save(); rerender(); }); break;
+      S.debts = []; S.credits = []; S.expenses = []; S.incomes = []; S.accounts = []; S.profile = null; ui.unlocked = false; ui.view = null; ui.tab = 'home'; save(); rerender(); }); break;
   }
 });
 function adminPassForm() {
@@ -462,16 +484,17 @@ document.addEventListener('submit', async e => {
       done('Perfil guardado'); break;
     case 'debt': {
       const n = amt(); if (n === null) return;
-      const d = id ? find(S.debts, id) : null;
+      const d = id ? findAny(id) : null;
       const data = { name: f.name.trim(), kind: f.kind.trim(), due: f.due, total: n, note: f.note.trim() };
-      if (d) Object.assign(d, data); else S.debts.push({ id: uid(), payments: [], ...data });
-      done('Deuda guardada'); break; }
+      if (d) Object.assign(d, data); else (f.side === 'c' ? S.credits : S.debts).push({ id: uid(), payments: [], ...data });
+      if (!d) ui.side = f.side === 'c' ? 'c' : 'd';
+      done('Guardado'); break; }
     case 'pay': {
       const n = amt(); if (n === null) return;
-      const d = find(S.debts, id);
+      const d = findAny(id), cr = S.credits.includes(d);
       if (n > pending(d) + 0.001) return toast(`Solo faltan ${money(pending(d))}`);
       d.payments.push({ id: uid(), amount: n, date: f.date || todayStr(), accountId: f.accountId, ts: Date.now() });
-      done(pending(d) === 0 ? '¡Deuda saldada! 🎉' : 'Pago registrado'); break; }
+      done(pending(d) === 0 ? (cr ? '¡Te pagaron todo! 🎉' : '¡Deuda saldada! 🎉') : (cr ? 'Cobro registrado' : 'Pago registrado')); break; }
     case 'out': case 'in': {
       const n = amt(); if (n === null) return;
       const arr = k === 'out' ? S.expenses : S.incomes, x = id ? find(arr, id) : null;
