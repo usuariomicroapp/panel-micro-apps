@@ -47,11 +47,11 @@ const ACCTYPES = { Efectivo: '💵', Banco: '🏦', Billetera: '📱', Tarjeta: 
 /* ---------- datos y nube ---------- */
 const CFG = window.MC_CLOUD || {};
 const sb = CFG.url && CFG.key && window.supabase ? window.supabase.createClient(CFG.url, CFG.key) : null;
-const blankData = () => ({ accounts: [], debts: [], credits: [], expenses: [], incomes: [], lastBackup: 0 });
+const blankData = () => ({ accounts: [], debts: [], credits: [], prospects: [], expenses: [], incomes: [], lastBackup: 0 });
 const DATA_KEYS = Object.keys(blankData());
 let S = blankData();
 const ui = {
-  stage: 'boot', side: 'd', tab: 'home', month: monthOf(todayStr()), view: null, showPaid: false,
+  stage: 'boot', side: 'd', inSide: 'r', tab: 'home', month: monthOf(todayStr()), view: null, showPaid: false,
   user: null, me: null, recovery: false, mode: 'in', users: [], q: '', dirty: false, sync: 'ok',
   cfg: { brand_name: 'Mis Cuentas', brand_color: '#e8c26a', trial_days: 7, price_text: '', payment_url: '', whatsapp: '' },
 };
@@ -152,7 +152,8 @@ const totals = () => {
   const cash = sum(S.accounts.map(accBalance));
   const debt = sum(S.debts.map(pending));
   const owed = sum(S.credits.map(pending));
-  return { cash, debt, owed, net: cash - debt };
+  const maybe = sum(S.prospects.filter(p => p.status === 'open').map(p => p.estimate));
+  return { cash, debt, owed, maybe, net: cash - debt };
 };
 const accName = id => S.accounts.find(a => a.id === id)?.name || 'Sin cuenta';
 
@@ -243,7 +244,7 @@ function shell() {
 
 /* ---------- vistas ---------- */
 function homeView() {
-  const { cash, debt, owed, net } = totals();
+  const { cash, debt, owed, maybe, net } = totals();
   const cov = debt === 0 ? 100 : Math.min(100, Math.max(0, (cash / debt) * 100));
   const m = ui.month === monthOf(todayStr()) ? ui.month : monthOf(todayStr());
   const inM = sum(S.incomes.filter(x => monthOf(x.date) === m).map(x => x.amount))
@@ -263,6 +264,7 @@ function homeView() {
 
   const dl = S.debts.filter(d => pending(d) > 0).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1).slice(0, 4).map(debtRow).join('');
   const cl = S.credits.filter(d => pending(d) > 0).sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1).slice(0, 4).map(debtRow).join('');
+  const pl = S.prospects.filter(p => p.status === 'open').slice(0, 4).map(prospectRow).join('');
   const recent = [
     ...S.incomes.map(x => ({ ...x, k: 'in' })), ...S.expenses.map(x => ({ ...x, k: 'out' })),
     ...S.debts.flatMap(d => d.payments.map(p => ({ ...p, k: 'pay', concept: 'Pago: ' + d.name }))),
@@ -276,30 +278,44 @@ function homeView() {
     <div class="big num" style="color:${net < 0 ? 'var(--bad)' : 'var(--fg)'}">${money(net)}</div>
     ${pill}
     <div class="meter"><i style="width:${cov}%"></i></div>
-    <div class="sub"><span>${msg}</span>${owed ? `<span>Si cobrás todo lo que te deben: <b class="num">${money(net + owed)}</b></span>` : ''}</div></section>
+    <div class="sub"><span>${msg}</span>${owed || maybe ? `<span>Si cobrás y vendés todo: <b class="num">${money(net + owed + maybe)}</b></span>` : ''}</div></section>
   <div class="stats">
     <div class="stat cash"><span>Plata que tengo</span><b class="num">${money(cash)}</b></div>
     <div class="stat debt"><span>Total que debo</span><b class="num">${money(debt)}</b></div>
     <div class="stat"><span>Ingresos del mes</span><b class="num" style="color:var(--good)">${money(inM)}</b></div>
     <div class="stat"><span>Gastos del mes</span><b class="num" style="color:var(--bad)">${money(outM)}</b></div>
-    <div class="stat" style="grid-column:1/-1"><span>Me deben</span><b class="num" style="color:var(--blue)">${money(owed)}</b></div></div>
+    <div class="stat"><span>Me deben</span><b class="num" style="color:var(--blue)">${money(owed)}</b></div>
+    <div class="stat"><span>Posibles ingresos</span><b class="num" style="color:var(--gold)">${money(maybe)}</b></div></div>
   <section class="sec"><div class="sechead"><h2>Dónde está tu plata</h2><button class="link" data-act="new-acc">+ Cuenta</button></div>
     <div class="card">${accs}</div></section>
   <section class="sec"><div class="sechead"><h2>Qué me falta pagar</h2><button class="link" data-act="tab" data-v="debts">Ver todo</button></div>
     <div class="card">${dl || `<div class="empty"><b>Todo al día</b>No hay deudas pendientes.</div>`}</div></section>
   ${S.credits.length ? `<section class="sec"><div class="sechead"><h2>Me deben</h2><button class="link" data-act="side-c">Ver todo</button></div>
     <div class="card">${cl || `<div class="empty"><b>Nada pendiente</b>Te pagaron todo.</div>`}</div></section>` : ''}
+  ${pl ? `<section class="sec"><div class="sechead"><h2>Por vender</h2><button class="link" data-act="goprospects">Ver todo</button></div>
+    <div class="card">${pl}</div></section>` : ''}
   <section class="sec"><div class="sechead"><h2>Últimos movimientos</h2></div>
     <div class="card">${recent || `<div class="empty"><b>Sin movimientos</b>Usá el botón + para cargar el primero.</div>`}</div></section>`;
 }
 
+function plan(d) {
+  if (!d.cuotas) return null;
+  const done = Math.min(d.cuotas, Math.floor(paid(d) / d.cuota + 1e-9));
+  let due = '';
+  if (d.first && pending(d) > 0) {
+    const [y, m, dd] = d.first.split('-').map(Number), t = new Date(y, m - 1 + done, dd);
+    due = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  }
+  return { done, next: Math.min(d.cuotas, done + 1), due, amount: Math.min(d.cuota, pending(d)) };
+}
+const planLine = d => { const q = plan(d); return q ? `<p class="hint">Plan: ${d.cuotas} cuotas de ${money(d.cuota)} · pagadas ${q.done}${q.due ? ` · próxima ${fmtDate(q.due)}` : ''}</p>` : ''; };
 function debtRow(d) {
   const cr = S.credits.includes(d);
   const p = pending(d), pc = d.total ? Math.min(100, (paid(d) / d.total) * 100) : 0;
-  const late = d.due && p > 0 && d.due < todayStr();
+  const pn = plan(d), dueD = pn?.due || d.due, late = dueD && p > 0 && dueD < todayStr();
   return `<div class="row" data-act="debt" data-id="${d.id}"><div class="ico">${p === 0 ? '✅' : cr ? '🤝' : '💳'}</div>
     <div class="t"><b>${esc(d.name)}</b>
-      <small>${esc(d.kind || (cr ? 'Me deben' : 'Deuda'))}${d.due ? ` · ${cr ? 'cobrar' : 'vence'} ${fmtDate(d.due)}${late ? ' ⚠️' : ''}` : ''}</small>
+      <small>${esc(d.kind || (cr ? 'Me deben' : 'Deuda'))}${pn && p > 0 ? ` · cuota ${pn.next}/${d.cuotas}` : ''}${dueD ? ` · ${cr ? 'cobrar' : 'vence'} ${fmtDate(dueD)}${late ? ' ⚠️' : ''}` : ''}</small>
       <div class="mini"><i style="width:${pc}%"></i></div></div>
     <div class="amt num ${p === 0 ? 'in' : cr ? '' : 'out'}" ${cr && p ? 'style="color:var(--blue)"' : ''}>${p ? money(p) : cr ? 'Cobrada' : 'Pagada'}${p && paid(d) ? `<div class="hint" style="font-weight:400;font-size:12px">de ${money(d.total)}</div>` : ''}</div></div>`;
 }
@@ -351,7 +367,24 @@ function monthList(kind) {
     <div class="card">${list.map(x => moveRow({ ...x, k: x.creditId ? 'col' : kind })).join('') || `<div class="empty"><b>Nada cargado este mes</b>Tocá + para agregar.</div>`}</div></section>`;
 }
 const expensesView = () => monthList('out');
-const incomesView = () => monthList('in');
+const incomesView = () => {
+  const seg = `<div class="seg"><button class="${ui.inSide === 'p' ? '' : 'on'}" data-act="inside" data-v="r">Ingresos</button><button class="${ui.inSide === 'p' ? 'on' : ''}" data-act="inside" data-v="p">Por vender</button></div>`;
+  return seg + (ui.inSide === 'p' ? prospectsView() : monthList('in'));
+};
+function prospectRow(p) {
+  return `<div class="row" data-act="prospect" data-id="${p.id}"><div class="ico">🏷️</div>
+    <div class="t"><b>${esc(p.name)}</b><small>Estimado${p.date ? ' · ' + fmtDate(p.date) : ''}${p.note ? ' · ' + esc(p.note) : ''}</small></div>
+    <div class="amt num" style="color:var(--gold)">${money(p.estimate)}</div></div>`;
+}
+function prospectsView() {
+  const open = S.prospects.filter(p => p.status === 'open'), tot = sum(open.map(p => p.estimate));
+  const sold = S.prospects.filter(p => p.status === 'sold').length;
+  return `<section class="hero"><div class="lbl">Posibles ingresos</div><div class="big num" style="color:var(--gold)">${money(tot)}</div>
+    <div class="sub"><span>Todavía no suman a tu balance. Cuando vendés, pasan a ser ingreso.</span></div></section>
+  <section class="sec"><div class="sechead"><h2>Por vender${open.length ? ` (${open.length})` : ''}</h2><button class="link" data-act="new-prospect">+ Algo para vender</button></div>
+    <div class="card">${open.map(prospectRow).join('') || `<div class="empty"><b>Nada por vender</b>Cargá un vehículo, un electrodoméstico…</div>`}</div>
+    ${sold ? `<p class="hint" style="text-align:center;margin-top:12px">Ya vendiste ${sold} (figuran en Ingresos).</p>` : ''}</section>`;
+}
 
 /* ---------- hojas (formularios) ---------- */
 function sheet(html) {
@@ -375,6 +408,7 @@ function chooser() {
     <button class="btn ghost" data-act="new-credit">🤝 Alguien me debe</button>
     <button class="btn ghost" data-act="pay-pick">💸 Pagué una deuda</button>
     <button class="btn ghost" data-act="col-pick">✅ Me pagaron una deuda</button>
+    <button class="btn ghost" data-act="new-prospect">🏷️ Algo que voy a vender</button>
     <button class="btn ghost" data-act="new-acc">🏦 Una cuenta nueva</button></div>`);
 }
 function debtForm(d, side) {
@@ -395,7 +429,8 @@ function debtDetail(id) {
   sheet(`<h2>${esc(d.name)}</h2>
     <div class="stats" style="margin:0 0 14px"><div class="stat"><span>Total</span><b class="num">${money(d.total)}</b></div>
     <div class="stat ${cr ? 'cash' : 'debt'}"><span>${cr ? 'Falta cobrar' : 'Falta pagar'}</span><b class="num">${money(p)}</b></div></div>
-    <p class="hint">${esc(d.kind || '')}${d.due ? ` · ${cr ? 'cobrar' : 'vence'} ${fmtDate(d.due)}` : ''}${d.note ? ` · ${esc(d.note)}` : ''}</p>
+    ${planLine(d)}
+    <p class="hint">${esc(d.kind || '')}${d.due && !d.cuotas ? ` · ${cr ? 'cobrar' : 'vence'} ${fmtDate(d.due)}` : ''}${d.note ? ` · ${esc(d.note)}` : ''}</p>
     <div class="btns h" style="margin-bottom:14px">
       <button class="btn" data-act="pay" data-id="${d.id}" ${p ? '' : 'disabled style="opacity:.4"'}>${cr ? 'Registrar cobro' : 'Registrar pago'}</button>
       <button class="btn ghost" data-act="edit-debt" data-id="${d.id}">Editar</button></div>
@@ -408,7 +443,7 @@ function payForm(id) {
   const d = findAny(id); if (!d) return;
   const cr = S.credits.includes(d);
   sheet(`<h2>${cr ? 'Cobro' : 'Pago'} · ${esc(d.name)}</h2><p class="hint">Falta ${cr ? 'cobrar' : 'pagar'} ${money(pending(d))}</p>
-    <form data-form="pay" data-id="${id}">${amountInput(pending(d))}
+    <form data-form="pay" data-id="${id}">${amountInput(plan(d)?.amount ?? pending(d))}
     <div class="two"><label class="f"><span>${cr ? 'Entró en' : 'Pagué desde'}</span><select class="inp" name="accountId">${accOptions(S.accounts[0]?.id)}</select></label>
     <label class="f"><span>Fecha</span><input class="inp" type="date" name="date" value="${todayStr()}"></label></div>
     <div class="btns"><button class="btn">${cr ? 'Registrar cobro' : 'Registrar pago'}</button></div></form>`);
@@ -429,6 +464,41 @@ function moveForm(kind, x) {
     <label class="f"><span>Fecha</span><input class="inp" type="date" name="date" value="${x?.date || todayStr()}"></label></div>
     <label class="f"><span>${isOut ? 'Pagado desde' : 'Entró en'}</span><select class="inp" name="accountId">${accOptions(x ? x.accountId : S.accounts[0]?.id)}</select></label>
     <div class="btns"><button class="btn">Guardar</button>${x ? `<button type="button" class="btn danger" data-act="del-${kind}" data-id="${x.id}">Eliminar</button>` : ''}</div></form>`);
+}
+function prospectForm(p) {
+  sheet(`<h2>${p ? 'Editar' : 'Algo para vender'}</h2><form data-form="prospect" data-id="${p?.id || ''}">
+    <label class="f"><span>Qué es</span><input class="inp" name="name" required placeholder="Ej: Auto Fiat, heladera…" value="${esc(p?.name)}"></label>
+    <label class="f"><span>Precio estimado</span><input class="inp num" name="amount" inputmode="decimal" required placeholder="$ 0" value="${p?.estimate ?? ''}" style="font-size:22px"></label>
+    <div class="two"><label class="f"><span>Fecha aprox. (opcional)</span><input class="inp" type="date" name="date" value="${p?.date || ''}"></label>
+    <label class="f"><span>Nota (opcional)</span><input class="inp" name="note" placeholder="Interesado, etc." value="${esc(p?.note)}"></label></div>
+    <div class="btns"><button class="btn">Guardar</button>${p ? `<button type="button" class="btn danger" data-act="del-prospect" data-id="${p.id}">Eliminar</button>` : ''}</div></form>`);
+}
+function prospectDetail(id) {
+  const p = find(S.prospects, id); if (!p) return;
+  sheet(`<h2>${esc(p.name)}</h2><p class="hint">Precio estimado ${money(p.estimate)}${p.date ? ' · ' + fmtDate(p.date) : ''}${p.note ? ' · ' + esc(p.note) : ''}</p>
+    <div class="btns" style="margin-top:12px"><button class="btn" data-act="sell" data-id="${id}">✅ Lo vendí</button>
+    <div class="btns h"><button class="btn ghost" data-act="edit-prospect" data-id="${id}">Editar</button><button class="btn ghost" data-act="drop" data-id="${id}">Se cayó la venta</button></div></div>`);
+}
+function sellForm(id) {
+  const p = find(S.prospects, id); if (!p) return;
+  const d = new Date(); d.setMonth(d.getMonth() + 1);
+  const nextMonth = new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+  sheet(`<h2>Vendiste: ${esc(p.name)}</h2><form data-form="sell" data-id="${id}">
+    <label class="f"><span>Precio final de venta</span><input class="inp num" name="amount" inputmode="decimal" required value="${p.estimate}" style="font-size:22px"></label>
+    <label class="f"><span>Lo que cobrás hoy (entrega). Si te pagan todo junto, dejá el total.</span><input class="inp num" name="down" inputmode="decimal" value="${p.estimate}"></label>
+    <div class="two"><label class="f"><span>Cuotas para el resto</span><input class="inp" type="number" name="cuotas" min="0" max="120" value="0"></label>
+    <label class="f"><span>1.ª cuota vence</span><input class="inp" type="date" name="first" value="${nextMonth}"></label></div>
+    <p class="hint" id="sellhint"></p>
+    <div class="two"><label class="f"><span>Entró en</span><select class="inp" name="accountId">${accOptions(S.accounts[0]?.id)}</select></label>
+    <label class="f"><span>Fecha de venta</span><input class="inp" type="date" name="date" value="${todayStr()}"></label></div>
+    <div class="btns"><button class="btn">Confirmar venta</button></div></form>`);
+  sellHint();
+}
+function sellHint() {
+  const f = $('form[data-form=sell]'); const h = $('#sellhint'); if (!f || !h) return;
+  const total = parseAmount(f.amount.value), down = f.down.value === '' ? total : parseAmount(f.down.value), n = parseInt(f.cuotas.value, 10) || 0;
+  const rest = total - down;
+  h.textContent = !(total > 0) || isNaN(down) ? '' : rest > 0.004 ? (n > 0 ? `Cobrás ${money(down)} hoy y ${n} cuotas de ${money(Math.ceil(rest / n))}.` : `Falta definir las cuotas para ${money(rest)}.`) : `Cobrás ${money(total)} hoy.`;
 }
 function accForm(a) {
   sheet(`<h2>${a ? 'Editar cuenta' : 'Nueva cuenta'}</h2><form data-form="acc" data-id="${a?.id || ''}">
@@ -532,7 +602,7 @@ document.addEventListener('click', async e => {
   const { act, id, v, d, pid } = el.dataset;
   switch (act) {
     case 'tab': ui.tab = v; ui.view = null; closeSheet(); rerender(); scrollTo(0, 0); break;
-    case 'add': ({ home: chooser, debts: () => debtForm(null, ui.side), expenses: () => moveForm('out'), incomes: () => moveForm('in') })[ui.tab](); break;
+    case 'add': ({ home: chooser, debts: () => debtForm(null, ui.side), expenses: () => moveForm('out'), incomes: () => ui.inSide === 'p' ? prospectForm() : moveForm('in') })[ui.tab](); break;
     case 'month': ui.month = shiftMonth(ui.month, +d); rerender(); break;
     case 'toggle-paid': ui.showPaid = !ui.showPaid; rerender(); break;
     case 'settings': ui.view = 'settings'; closeSheet(); rerender(); scrollTo(0, 0); break;
@@ -554,6 +624,14 @@ document.addEventListener('click', async e => {
     case 'edit-in': moveForm('in', find(S.incomes, id)); break;
     case 'del-out': confirmDo('¿Eliminar este gasto?', () => { S.expenses = S.expenses.filter(x => x.id !== id); done('Gasto eliminado'); }); break;
     case 'del-in': confirmDo('¿Eliminar este ingreso?', () => { S.incomes = S.incomes.filter(x => x.id !== id); done('Ingreso eliminado'); }); break;
+    case 'inside': ui.inSide = v; rerender(); break;
+    case 'goprospects': ui.tab = 'incomes'; ui.inSide = 'p'; rerender(); scrollTo(0, 0); break;
+    case 'new-prospect': prospectForm(); break;
+    case 'prospect': prospectDetail(id); break;
+    case 'edit-prospect': prospectForm(find(S.prospects, id)); break;
+    case 'sell': sellForm(id); break;
+    case 'drop': confirmDo('¿Se cayó la venta? Sale de la lista.', () => { find(S.prospects, id).status = 'dropped'; done('Quitado de la lista'); }); break;
+    case 'del-prospect': confirmDo('¿Eliminar?', () => { S.prospects = S.prospects.filter(x => x.id !== id); done('Eliminado'); }); break;
     case 'new-acc': accForm(); break;
     case 'edit-acc': accForm(find(S.accounts, id)); break;
     case 'del-acc': confirmDo('¿Eliminar la cuenta? Sus movimientos quedan sin cuenta.', () => {
@@ -654,6 +732,23 @@ document.addEventListener('submit', async e => {
       const data = { amount: n, concept: f.concept.trim(), date: f.date || todayStr(), accountId: f.accountId, [k === 'out' ? 'category' : 'kind']: f.cat };
       if (x) Object.assign(x, data); else arr.push({ id: uid(), ts: Date.now(), ...data });
       ui.month = monthOf(data.date); done(k === 'out' ? 'Gasto guardado' : 'Ingreso guardado'); break; }
+    case 'prospect': {
+      const n = amt(); if (n === null) return;
+      const pr = id ? find(S.prospects, id) : null;
+      const data = { name: f.name.trim(), estimate: n, date: f.date, note: f.note.trim() };
+      if (pr) Object.assign(pr, data); else S.prospects.push({ id: uid(), status: 'open', ...data });
+      ui.inSide = 'p'; done('Guardado'); break; }
+    case 'sell': {
+      const pr = find(S.prospects, id), total = parseAmount(f.amount);
+      const down = f.down.trim() === '' ? total : parseAmount(f.down), n = parseInt(f.cuotas, 10) || 0;
+      if (!(total > 0) || isNaN(down) || down < 0 || down > total) return toast('Revisá los montos');
+      const rest = total - down;
+      if (rest > 0.004 && n < 1) return toast('Poné en cuántas cuotas se paga el resto');
+      const date = f.date || todayStr();
+      if (down > 0) S.incomes.push({ id: uid(), ts: Date.now(), amount: down, concept: (rest > 0.004 ? 'Entrega: ' : 'Venta: ') + pr.name, kind: 'Venta', date, accountId: f.accountId });
+      if (rest > 0.004) S.credits.push({ id: uid(), name: pr.name, kind: 'Ventas en cuotas', due: f.first || '', first: f.first || '', total: rest, cuotas: n, cuota: Math.ceil(rest / n), note: `Venta total ${money(total)}`, payments: [] });
+      pr.status = 'sold'; pr.price = total; ui.inSide = 'r'; ui.month = monthOf(date);
+      done(rest > 0.004 ? 'Venta registrada. Las cuotas están en "Me deben"' : 'Venta registrada'); break; }
     case 'acc': {
       const n = parseAmount(f.amount || '0'); if (isNaN(n)) return toast('Monto inválido');
       const a = id ? find(S.accounts, id) : null;
@@ -671,3 +766,5 @@ document.addEventListener('visibilitychange', async () => {
 addEventListener('online', () => { if (ui.dirty) push(); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 if (sb) { initAuth(); render(); } else render();
+
+document.addEventListener('input', e => { if (e.target.closest('form[data-form=sell]')) sellHint(); });
