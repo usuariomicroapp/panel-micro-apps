@@ -1,4 +1,4 @@
-const V = 'mis-cuentas-nube-v2';
+const V = 'mis-cuentas-nube-v3';
 const FILES = ['./', 'index.html', 'styles.css', 'app.js', 'config.js', 'vendor/supabase.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
