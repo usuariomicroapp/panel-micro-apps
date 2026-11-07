@@ -519,6 +519,7 @@ const statusOf = u => u.status === 'paused' ? ['Pausado', 'off'] : Date.parse(u.
 function settingsView() {
   const m = ui.me || {};
   const row = (act, ic, t, s) => `<div class="row" data-act="${act}"><div class="ico">${ic}</div><div class="t"><b>${t}</b><small>${s}</small></div></div>`;
+  const us = ui.users.filter(u => u.role !== 'admin'), wk = us.filter(u => Date.now() - Date.parse(u.created_at) < 7 * 864e5).length;
   const acc = m.role === 'admin' ? 'Administrador' : `${statusOf(m)[0]} · hasta ${fmtDate((m.access_until || '').slice(0, 10))}`;
   return `<div class="shell"><div class="top"><button class="iconbtn" data-act="back" aria-label="Volver">${I.back}</button><h1 style="font-size:20px">Ajustes</h1><span style="width:42px"></span></div>
   <section class="card">
@@ -528,7 +529,8 @@ function settingsView() {
     ${row('export', '⬇️', 'Descargar mis datos', 'Archivo con toda tu información')}
     ${row('import', '⬆️', 'Cargar datos desde un archivo', 'Ej.: copia de la versión anterior')}
   </section>
-  ${m.role === 'admin' ? `<section class="card" style="margin-top:16px">${row('admin', '🛡️', 'Panel de administrador', 'Clientes, accesos y configuración')}</section>` : ''}
+  ${m.role === 'admin' ? `<section class="card" style="margin-top:16px">${row('share-app', '📣', 'Invitar amigos', `${us.length} registrados · ${wk} esta semana`)}
+    ${row('admin', '🛡️', 'Panel de administrador', 'Clientes, accesos y configuración')}</section>` : ''}
   <section class="card" style="margin-top:16px">
     ${row('logout', '🚪', 'Cerrar sesión', 'Salir de este dispositivo')}
     ${row('wipe-mine', '🧹', 'Borrar todos mis datos', 'Empezar de cero (no se puede deshacer)')}
@@ -605,7 +607,7 @@ document.addEventListener('click', async e => {
     case 'add': ({ home: chooser, debts: () => debtForm(null, ui.side), expenses: () => moveForm('out'), incomes: () => ui.inSide === 'p' ? prospectForm() : moveForm('in') })[ui.tab](); break;
     case 'month': ui.month = shiftMonth(ui.month, +d); rerender(); break;
     case 'toggle-paid': ui.showPaid = !ui.showPaid; rerender(); break;
-    case 'settings': ui.view = 'settings'; closeSheet(); rerender(); scrollTo(0, 0); break;
+    case 'settings': ui.view = 'settings'; closeSheet(); rerender(); scrollTo(0, 0); if (ui.me?.role === 'admin') loadUsers().then(() => ui.view === 'settings' && rerender()); break;
     case 'back': ui.view = null; rerender(); break;
     case 'new-debt': debtForm(null, 'd'); break;
     case 'new-credit': debtForm(null, 'c'); break;
@@ -649,6 +651,13 @@ document.addEventListener('click', async e => {
     case 'logout': if (ui.dirty) await push(); closeSheet(); await sb.auth.signOut(); break;
     case 'wipe-mine': confirmDo('Se borran TODOS tus datos (cuentas, deudas, gastos e ingresos). ¿Seguro?', () => { S = { ...blankData(), accounts: defaultAccounts() }; done('Datos borrados'); }); break;
     case 'admin': if (ui.me?.role !== 'admin') break; ui.view = 'admin'; rerender(); loadUsers().then(() => ui.view === 'admin' && rerender()); break;
+    case 'share-app': {
+      if (ui.me?.role !== 'admin') break;
+      const url = location.origin + location.pathname;
+      const text = `Probá ${ui.cfg.brand_name}: controlá tus deudas, gastos e ingresos en un solo lugar.${ui.cfg.trial_days > 0 ? ` ${ui.cfg.trial_days} días gratis.` : ''}`;
+      if (navigator.share) navigator.share({ title: ui.cfg.brand_name, text, url }).catch(() => {});
+      else (navigator.clipboard?.writeText(`${text} ${url}`) || Promise.reject()).then(() => toast('Mensaje y link copiados'), () => prompt('Copiá este mensaje:', `${text} ${url}`));
+      break; }
     case 'reload-users': loadUsers().then(rerender); break;
     case 'user': userSheet(id); break;
     case 'extend': { const u = ui.users.find(x => x.id === id); const base = Math.max(Date.now(), Date.parse(u.access_until)); adminSet(id, 'active', new Date(base + (+d) * 864e5).toISOString()); break; }
